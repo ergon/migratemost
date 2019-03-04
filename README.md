@@ -1,4 +1,4 @@
-# migratemost
+# Migratemost
 Migrate Hipchat data to Mattermost.
 
 Migratemost is a set of Python scripts to migrate your Hipchat data to Mattermost. It uses the [Hipchat export](https://confluence.atlassian.com/hipchatdc3/export-and-import-data-from-hipchat-data-center-909770932.html) and optionally fetches additional data from Hipchat via REST API to amend the export. Based on that data, it generates JSONL files for the [Mattermost Bulk Loading](https://docs.mattermost.com/deployment/bulk-loading.html).
