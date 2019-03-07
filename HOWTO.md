@@ -3,7 +3,7 @@
 ## Prerequisites
 - Mattermost installation (see [Installing Mattermost](https://docs.mattermost.com/guides/administrator.html#installing-mattermost))
 - A Hipchat export (see [Export data from Hipchat Data Center](https://confluence.atlassian.com/hipchatdc3/export-data-from-hipchat-data-center-913476832.html) for on-premise installations or [Migrate to Slack](https://www.atlassian.com/partnerships/slack/migration) for Hipchat Cloud). The export file needs to be decrypted and extracted.
-- Read Caveats the [`Caveats` section of README.md.](./README.md#caveats)
+- Read the [`Caveats` section of README.md.](./README.md#caveats)
 
 ## Step 1: Installation
 Checkout this repository and install the requirements.
@@ -19,7 +19,7 @@ Given you have the Hipchat data decrypted and extracted, this step will convert 
 Run `migratemost.py` with the appropriate options as described [in the `Usage` section of README.md.](./README.md#usage)
 
 ### Example
-`./migratemost.py -t MyTeam -o ./mm_data/ -i ./data/ -v --migrate-all --join-public-channels --apply-admin-team-role --map-town-square-channel="MyTeamRoom" --authentication-service=ldap --authentication-data-field=username --concat-output --filter-users=".*@mycompany.ch" --amend-rooms --migrate-custom-emoticons --hipchat-base-url=https://hipchat.mycompany.com/v2/ --hipchat-access-tokens=token1,token2,token3`
+`./migratemost.py -t MyTeam -o ./mm_data/ -i ./data/ -v --migrate-all --public-channel-membership-based-on-redis-export --apply-admin-team-role --map-town-square-channel="MyTeamRoom" --authentication-service=ldap --authentication-data-field=username --concat-output --filter-users=".*@mycompany.ch" --amend-rooms --migrate-custom-emoticons --hipchat-base-url=https://hipchat.mycompany.com/v2/ --hipchat-access-tokens=token1,token2,token3`
 
 ## Step 3: Import the data to Mattermost
 Migratemost logs some help on how to import the data once it's done. Further help can be found at [Mattermost Bulk Loding](https://docs.mattermost.com/deployment/bulk-loading.html)
