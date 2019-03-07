@@ -105,8 +105,10 @@ def migrate_emoticons(output_path, hipchat_base_url, hipchat_tokens, migrate_glo
             name = 'hc_%s' % e[u'shortcut'] # ensure name is unique
             url = e[u'url']
             filename = url.split('/')[-1]
-            download_path = os.path.abspath('%s/%s/%s' % (output_path, filename, 'emojis'))
-            os.mkdir(download_path)
+            download_dir = os.path.abspath('%s/%s' % (output_path, 'emojis'))
+            download_path = '%s/%s' % (download_dir, filename)
+            if not os.path.exists(download_dir):
+                os.mkdir(download_dir)
             logger.info('Downloading emoticon for (%s)' % name)
             _download_file(url, download_path)
 
