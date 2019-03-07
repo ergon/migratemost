@@ -89,7 +89,7 @@ Options:
     --apply-admin-team-role
                         Use to give users team admin role in Mattermost if
                         they had Hipchat admin rights.
-    --apple-admin-system-role
+    --apply-admin-system-role
                         Use to give users system admin role in Mattermost if
                         they had Hipchat admin rights.
     --map-town-square-channel=TOWN_SQUARE_SOURCE_ROOM_NAME
@@ -144,17 +144,17 @@ Options:
 - Public channel owners are migrated by default
 - Public channel members are not migrated by default, but can be enabled by command-line switch
 - Hipchat export contains only admins and owners of public rooms, but not participants. If it is acceptable for your users to manually join public channels after the migration, stop reading here ;) Otherwise, there is the following options to migrate members of public channels:
-  - `--public-channel-membership-based-on-messages` Guess channel membership by looking at the messages a user has written. If a user has ever written a message in a public room, it will be added as a member to the corresponding public channel. 
-    
+  - `--public-channel-membership-based-on-messages` Guess channel membership by looking at the messages a user has written. If a user has ever written a message in a public room, it will be added as a member to the corresponding public channel.
+
     Drawbacks are:
     - Users join channels, just because they wrote a message at some point but left the room a long time ago (could add some more factors, like max message age, but will still be unreliable)
     - Rooms that have the nature of an activity stream, where few users write and many read, will not be respected
   - `--public-channel-membership-based-on-hipchat-export` in combination with `--amend-rooms` Find memberships by amending the Hipchat export with data queried from the Hipchat REST API. The rooms.json export file will be extended with the participants returned from the REST calls.
-    
+
     Drawbacks are:
     - REST API only returns participants, that are currently online. Users that are offline while running the migration have no memberships.
   - `--public-channel-membership-based-on-redis-export` Use auto-join information as it is stored in Redis of the Hipchat installation. This is probably the most reliable way of finding room memberships.
-  
+
     Drawbacks are:
     - Hassle to fetch the Redis export manually from the Hipchat installation (but probably worth it)
 - Output can be concatenated into one huge JSONL file. Might be easier to import and is faster in my experience (no overhead to startup the Mattermost process for every file).

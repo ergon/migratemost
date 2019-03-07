@@ -790,7 +790,7 @@ def parse_arguments():
         action="store_true",
         default=False,
         help="Use to give users team admin role in Mattermost if they had Hipchat admin rights.")
-    parser_migration_group.add_option("--apple-admin-system-role",
+    parser_migration_group.add_option("--apply-admin-system-role",
         dest="apply_admin_system_role",
         action="store_true",
         default=False,
