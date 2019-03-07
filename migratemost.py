@@ -10,6 +10,7 @@ import re
 import sys
 import textwrap
 import time
+from enum import Enum
 from io import BytesIO
 from optparse import OptionParser, OptionGroup
 from PIL import Image
@@ -36,6 +37,7 @@ OUTPUT_USERS_FILENAME = OUTPUT_FILENAME_PREFIX + 'users'
 OUTPUT_EMOJI_FILENAME = OUTPUT_FILENAME_PREFIX + 'emojis'
 OUTPUT_ALL_IN_ONE_FILENAME = OUTPUT_FILENAME_PREFIX + 'all_data'
 OUTPUT_HC_ROOMS_AMENDED_FILENAME = 'hc_rooms_amended.json'
+INPUT_HC_REDIS_AUTOJOIN_FILENAME = 'autojoin.json'
 
 # Checks:
 # according to: https://forum.mattermost.org/t/file-above-maximum-dimensions-couldnt-be-uploaded/4705/7
@@ -65,12 +67,6 @@ logger_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'
 logger_handler.setFormatter(logger_formatter)
 logger.addHandler(logger_handler)
 
-# Stats
-stats_total_users = 0
-stats_total_direct_posts = 0
-stats_total_channels = 0
-stats_total_channel_posts = 0
-
 # Arguments set on commandline
 default_team_name = ''
 default_team_display_name = ''
@@ -83,6 +79,8 @@ option_migrate_avatars = False
 option_migrate_channels = False
 option_migrate_channel_posts = False
 option_join_public_channels = False
+option_public_membership_based_on_messages = False
+option_public_membership_based_on_redis = False
 option_skip_archived_rooms = False
 option_use_hc_admin_role_as_mm_system_role = False
 option_use_hc_admin_role_as_mm_team_role = False
@@ -94,7 +92,6 @@ option_hipchat_tokens = []
 option_hipchat_amend_rooms = False
 option_migrate_hipchat_custom_emoticons = False
 option_migrate_hipchat_builtin_emoticons = False
-
 
 class Version(int): pass
 
@@ -208,10 +205,11 @@ class ChannelNotifyProps:
 class Channel:
     _archived = False
     _hipchat_id = None
-    _admins = []
+    _hipchat_name = ''
+    _admins = set()
     _owner = None
-    _members = [] # To answer your question, 'members' are users that have a membership in the room (used exclusively for private rooms) and 'participants' are users that are currently in a room. (https://community.atlassian.com/t5/Hipchat-questions/HIPCHAT-What-is-the-difference-quot-members-quot-amp-quot/qaq-p/461407)
-    _participants = []
+    _members = set() # To answer your question, 'members' are users that have a membership in the room (used exclusively for private rooms) and 'participants' are users that are currently in a room. (https://community.atlassian.com/t5/Hipchat-questions/HIPCHAT-What-is-the-difference-quot-members-quot-amp-quot/qaq-p/461407)
+    _participants = set()
     team = ''
     name = ''
     display_name = ''
@@ -219,23 +217,24 @@ class Channel:
     header = ''
     purpose = ''
 
-    def __init__(self, team, name, display_name, type, hipchat_id):
+    def __init__(self, team, name, display_name, type, hipchat_id, hipchat_name):
         self.team = team
         self.name = name
         self.display_name = u"%s" % display_name
         self.type = type
         self._hipchat_id = hipchat_id
+        self._hipchat_name = hipchat_name
 
     @classmethod
     def from_hc_room(cls, name, display_name, header, hc_room):
         hc_room_id = int(hc_room['id'])
         type = 'O' if hc_room['privacy'] == 'public' else 'P'
-        mm_channel = Channel(default_team_name, name, display_name, type, hc_room_id)
+        mm_channel = Channel(default_team_name, name, display_name, type, hc_room_id, hc_room['name'])
         mm_channel.header = header
         mm_channel._archived = hc_room['is_archived']
-        mm_channel._admins = hc_room['room_admins']
-        mm_channel._members = hc_room['members']
-        mm_channel._participants = hc_room['participants']
+        mm_channel._admins = set(hc_room['room_admins'])
+        mm_channel._members = set(hc_room['members'])
+        mm_channel._participants = set(hc_room['participants'])
         mm_channel._owner = hc_room['owner']
         return mm_channel
 
@@ -245,21 +244,30 @@ class Channel:
     def get_hc_id(self):
         return self._hipchat_id
 
+    def get_hc_name(self):
+        return self._hipchat_name
+
     def get_channel_members_hc_ids(self):
-        members = set(self._members)
-        members.update(self._participants)
-        return members
+        mm_members = set()
+        mm_members.update(self._members)
+        mm_members.update(self._participants)
+        return mm_members
+
+    def add_channel_participants(self, participants):
+        self._participants.update(participants)
 
     def get_channel_admins_hc_ids(self):
-        admins = set(self._admins)
-        admins.add(self._owner)
-        return admins
+        mm_admins = set()
+        mm_admins.update(self._admins)
+        mm_admins.add(self._owner)
+        return mm_admins
 
     def get_cli_id(self):
         return '%s:%s' % (self.team, self.name)
 
 class Post:
     _valid = True
+    _user_hc_id = 0
     team = ''
     channel = ''
     user = ''
@@ -270,12 +278,16 @@ class Post:
     reactions = []
     attachments = []
 
-    def __init__(self,  team, channel, user, message, create_at):
+    def __init__(self,  team, channel, user, user_hc_id, message, create_at):
         self.team = team
         self.channel = channel
         self.user = user
+        self.user_hc_id = user_hc_id
         self.message = message
         self.create_at = create_at
+
+    def get_user_hc_id(self):
+        return self._user_hc_id
 
     def is_valid(self):
         attachments_valid = all([a.is_valid() for a in self.attachments])
@@ -455,6 +467,11 @@ def load_hipchat_room_history(room_id):
         flattened_messages = [m['UserMessage'] for m in user_messages]
         return flattened_messages;
 
+def load_redis_autojoin():
+    with open('%s/%s' % (migration_input_path, INPUT_HC_REDIS_AUTOJOIN_FILENAME), 'r') as hc_autojoin_file:
+        autojoins = json.load(hc_autojoin_file)
+        return autojoins['autojoins']
+
 def concat_files(input_file_paths, output_file_name):
     with open(full_output_path(output_file_name), 'w') as output_file:
         mm_bulk_load_version = Version(1)
@@ -609,7 +626,7 @@ def migrate_channel_posts(mm_username_by_hc_id, mm_channel):
 
         mm_current_posts = []
         for i, part in enumerate(message_parts):
-            mm_post = Post(default_team_name, mm_channel.name, sender_mm_username, part, timestamp + i)
+            mm_post = Post(default_team_name, mm_channel.name, sender_mm_username, sender_hc_id, part, timestamp + i)
             mm_current_posts.append(mm_post)
 
         if hc_message['attachment'] is not None:
@@ -648,6 +665,16 @@ def migrate_user_channel_membership(mm_channels, mm_user):
 
     return channel_memberships
 
+def redis_participants_by_room_name():
+    autojoins = load_redis_autojoin()
+    participants_by_room_name = dict()
+    for a in autojoins:
+        hc_user_id = a['user_id']
+        hc_room_names_to_join = [r['name'] for r in a['rooms'] if r['jid'].endswith('conf.btf.hipchat.com')] # filter out 1:1 chats ending on chat.btf.hipchat.com
+        for room_name in hc_room_names_to_join:
+            participants_by_room_name.setdefault(room_name,[]).append(hc_user_id)
+    return participants_by_room_name
+
 def _parse_comma_separated_argument(option, opt_str, value, parser):
     setattr(parser.values, option.dest, value.split(','))
 
@@ -663,6 +690,8 @@ def parse_arguments():
     global option_migrate_direct_posts
     global option_migrate_avatars
     global option_join_public_channels
+    global option_public_membership_based_on_messages
+    global option_public_membership_based_on_redis
     global option_skip_archived_rooms
     global option_use_hc_admin_role_as_mm_team_role
     global option_use_hc_admin_role_as_mm_system_role
@@ -737,11 +766,25 @@ def parse_arguments():
         action="store_true",
         default=False,
         help="Use to to not migrate rooms that are marked as archived in Hipchat")
-    parser_migration_group.add_option("--join-public-channels",
-        dest="join_public_channels",
+
+    public_room_membership_intro = 'Use to have users join public channels if they were member of the corresponding room in Hipchat.'
+    public_room_membership_disclaimer = 'DISCLAIMER: Getting reliable public room memberships out of Hipchat is not easy. See README.md for more details.'
+    parser_migration_group.add_option("--public-channel-membership-based-on-hipchat-export",
+        dest="public_channel_membership_based_on_export",
         action="store_true",
         default=False,
-        help="Use to have users join public channels if they were member of the corresponding room in Hipchat.\nNot recommended, as users will potentially have a lot of unread rooms upon first logon.")
+        help='%s Room membership is evaluated based on Hipchat export and can be amended using the "--amend-rooms" option. %s' % (public_room_membership_intro, public_room_membership_disclaimer))
+    parser_migration_group.add_option("--public-channel-membership-based-on-messages",
+        dest="public_channel_membership_based_on_messages",
+        action="store_true",
+        default=False,
+        help='%s Room membership is based on if a user has ever written a message in the room. %s' % (public_room_membership_intro, public_room_membership_disclaimer))
+    parser_migration_group.add_option("--public-channel-membership-based-on-redis-export",
+        dest="public_channel_membership_based_on_redis",
+        action="store_true",
+        default=False,
+        help='%s Room membership is evaluated using a Redis export. Requires the output of the "redis_autjoin.sh" script to be at the input path. %s' % (public_room_membership_intro, public_room_membership_disclaimer))
+
     parser_migration_group.add_option("--apply-admin-team-role",
         dest="apply_admin_team_role",
         action="store_true",
@@ -839,9 +882,6 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
     if options.concat_output_files:
         option_concat_import_files = True
 
-    if options.join_public_channels:
-        option_join_public_channels = True
-
     if options.skip_archived_rooms:
         option_skip_archived_rooms = True
 
@@ -885,6 +925,18 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
         option_migrate_hipchat_custom_emoticons = options.migrate_custom_emoticons
         option_migrate_hipchat_builtin_emoticons = options.migrate_builtin_emoticons
 
+    if options.public_channel_membership_based_on_export or options.public_channel_membership_based_on_messages or options.public_channel_membership_based_on_redis:
+        option_join_public_channels = True
+
+    if options.public_channel_membership_based_on_messages:
+        option_public_membership_based_on_messages = True
+
+    if options.public_channel_membership_based_on_redis:
+        redis_export_path = '%s/%s' % (migration_input_path, INPUT_HC_REDIS_AUTOJOIN_FILENAME)
+        if not os.path.exists(redis_export_path):
+            parser.error("This option requires a Redis export to be present at %s" % redis_export_path)
+        option_public_membership_based_on_redis = True
+
     if options.authentication_service:
         default_auth_service = lower(options.authentication_service)
         if not default_auth_service in ALLOWED_AUTH_SERVICES:
@@ -902,6 +954,11 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
 
 def main():
     parse_arguments()
+
+    stats_total_users = 0
+    stats_total_direct_posts = 0
+    stats_total_channels = 0
+    stats_total_channel_posts = 0
 
     start_time = time.time()
     logger.info('Starting migration')
@@ -948,13 +1005,6 @@ def main():
         logger.debug('\t%d channels migrated' % len(mm_channels))
         write_mm_json(mm_channels, OUTPUT_CHANNELS_FILENAME)
 
-        for mm_user in mm_users:
-            channel_memberships = migrate_user_channel_membership(mm_channels, mm_user)
-            if len(channel_memberships) > MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER:
-                logger.warning("Encountered user (username: %s) with too many channel memberships (%d of %d allowed). Skipping channel memberships!"
-                                % (mm_user.username, len(channel_memberships), MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER))
-            mm_user.teams[0].channels = channel_memberships[0:MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER-1]
-
         if option_migrate_channel_posts:
             for i in range(len(mm_channels)):
                 channel = mm_channels[i]
@@ -963,6 +1013,26 @@ def main():
                 stats_total_channel_posts += len(mm_posts)
                 logger.debug('\t\t%d posts migrated' % len(mm_posts))
                 write_mm_json(mm_posts, '%s_%d' % (OUTPUT_CHANNEL_POSTS_FILENAME, channel.get_hc_id()))
+
+                # Hipchat export does not include public room participants, Hipchat API only returns participant if user is online during the requests
+                # As an educated guess if a user should become member of a public channel, we check if the user ever wrote a message in the room
+                if option_public_membership_based_on_messages:
+                    unique_senders = set(map(lambda p: p.get_user_hc_id(), mm_posts))
+                    channel.add_channel_participants(unique_senders)
+
+        # Another option (probably the most reliable one) to get participants of public Hipchat rooms, is to use a Redis export
+        # redis_autojoin.sh produces the json file containing room memberships used here
+        if option_public_membership_based_on_redis:
+            participants_by_room_name = redis_participants_by_room_name()
+            for c in mm_channels:
+                c.add_channel_participants(participants_by_room_name.get(c.get_hc_name(), []))
+
+        for mm_user in mm_users:
+            channel_memberships = migrate_user_channel_membership(mm_channels, mm_user)
+            if len(channel_memberships) > MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER:
+                logger.warning("Encountered user (username: %s) with too many channel memberships (%d of %d allowed). Skipping channel memberships!"
+                                % (mm_user.username, len(channel_memberships), MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER))
+            mm_user.teams[0].channels = channel_memberships[0:MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER-1]
 
         logger.info('Channel migration finished')
 
@@ -1002,13 +1072,12 @@ def main():
     logger.info("Migration finished")
     end_time = time.time()
     elapsed_time_minutes, elapsed_time_seconds = divmod(end_time - start_time, 60)
-    logger.info(```
+    logger.info('''
         Time elapsed: %d:%d
         Total users migrated: %d
         Total direct posts migrated: %d
         Total channels migrated: %d
-        Total channel posts migrated: %d
-    ``` % (elapsed_time_minutes, elapsed_time_seconds,
+        Total channel posts migrated: %''' % (elapsed_time_minutes, elapsed_time_seconds,
             stats_total_users, stats_total_direct_posts, stats_total_channels, stats_total_channel_posts))
 
     import_help_text = '''
