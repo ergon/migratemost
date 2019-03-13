@@ -82,6 +82,7 @@ option_join_public_channels = False
 option_public_membership_based_on_messages = False
 option_public_membership_based_on_redis = False
 option_skip_archived_rooms = False
+option_disable_tutorial = False
 option_use_hc_admin_role_as_mm_system_role = False
 option_use_hc_admin_role_as_mm_team_role = False
 options_map_room_to_town_square = ''
@@ -138,7 +139,7 @@ class User:
         self._hipchat_id = int(hipchat_id)
         self.roles = 'system_user'
         self.locale = 'en'
-        self.tutorial_step = '999' # skip tutorial
+        self.tutorial_step = '999' if option_disable_tutorial else '1' # 999 means skip tutorial
         self.show_unread_section = 'false'
         self.military_time = 'true'
 
@@ -693,6 +694,7 @@ def parse_arguments():
     global option_public_membership_based_on_messages
     global option_public_membership_based_on_redis
     global option_skip_archived_rooms
+    global option_disable_tutorial
     global option_use_hc_admin_role_as_mm_team_role
     global option_use_hc_admin_role_as_mm_system_role
     global options_map_room_to_town_square
@@ -766,6 +768,11 @@ def parse_arguments():
         action="store_true",
         default=False,
         help="Use to to not migrate rooms that are marked as archived in Hipchat")
+    parser_migration_group.add_option("--disable-tutorial",
+        dest="disable_tutorial",
+        action="store_true",
+        default=False,
+        help="Use to to disable introductory tutorial of Mattermost upon first logon for all users")
 
     public_room_membership_intro = 'Use to have users join public channels if they were member of the corresponding room in Hipchat.'
     public_room_membership_disclaimer = 'DISCLAIMER: Getting reliable public room memberships out of Hipchat is not easy. See README.md for more details.'
@@ -884,6 +891,9 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
 
     if options.skip_archived_rooms:
         option_skip_archived_rooms = True
+
+    if options.disable_tutorial:
+        option_disable_tutorial = True
 
     if options.migrate_channels:
         option_migrate_channels = True
@@ -1077,8 +1087,11 @@ def main():
         Total users migrated: %d
         Total direct posts migrated: %d
         Total channels migrated: %d
-        Total channel posts migrated: %''' % (elapsed_time_minutes, elapsed_time_seconds,
-            stats_total_users, stats_total_direct_posts, stats_total_channels, stats_total_channel_posts))
+        Total channel posts migrated: %d''' % (elapsed_time_minutes, elapsed_time_seconds,
+            stats_total_users,
+            stats_total_direct_posts,
+            stats_total_channels,
+            stats_total_channel_posts))
 
     import_help_text = '''
         mode=validate # or 'apply' once validation is successful

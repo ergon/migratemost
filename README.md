@@ -63,6 +63,8 @@ Options:
     --skip-archived-rooms
                         Use to to not migrate rooms that are marked as
                         archived in Hipchat
+    --disable-tutorial  Use to to disable introductory tutorial of Mattermost
+                        upon first logon for all users
     --public-channel-membership-based-on-hipchat-export
                         Use to have users join public channels if they were
                         member of the corresponding room in Hipchat. Room
@@ -132,7 +134,6 @@ Options:
                         option_tokens speeds up the the API calls, as Hipchat
                         has a hardcoded 100 requests per token per 5 minutes
                         rate limit.
-
 ```
 
 ## Caveats
