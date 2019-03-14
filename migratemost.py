@@ -25,8 +25,8 @@ import migrate_hipchat_emoticons
 # Arguments:
 ALLOWED_AUTH_SERVICES = ['gitlab', 'ldap', 'saml', 'google', 'office365']
 ALLOWED_AUTH_DATA_FIELDS = ['username', 'email']
-OUTPUT_DELETED_USERS_FILENAME = 'users_to_deactivate.txt'
-OUTPUT_ARCHIVED_CHANNELS_FILENAME = 'channels_to_archive.txt'
+OUTPUT_DELETED_USERS_FILENAME = 'users_to_deactivate'
+OUTPUT_ARCHIVED_CHANNELS_FILENAME = 'channels_to_archive'
 OUTPUT_FILENAME_PREFIX = 'mm_'
 OUTPUT_TEAM_FILENAME = OUTPUT_FILENAME_PREFIX + 'team'
 OUTPUT_DIRECT_CHANNELS_FILENAME = OUTPUT_FILENAME_PREFIX + 'direct_channels'
@@ -515,7 +515,7 @@ def migrate_users():
     deleted_users_usernames = set(map(lambda u: u.username, deleted_users))
 
     if len(deleted_users) > 0:
-        logger.info('\tFound %d deleted users. Writing file %s to be used with Mattermost CLI to deactivate them.' % (len(deleted_users), OUTPUT_DELETED_USERS_FILENAME))
+        logger.info('\tFound %d deleted users. Writing file %s.txt to be used with Mattermost CLI to deactivate them.' % (len(deleted_users), OUTPUT_DELETED_USERS_FILENAME))
         write_space_separated_list(sorted(deleted_users_usernames), OUTPUT_DELETED_USERS_FILENAME)
 
     return mm_users
@@ -609,7 +609,7 @@ def migrate_channels():
 
     if len(mm_archived_channels) > 0:
         mm_unique_cli_style_team_channels = set(map(lambda c: c.get_cli_id(), mm_archived_channels))
-        logger.info('\tFound %d archived channels. Writing file %s to be used with Mattermost CLI to archive them.' % (len(mm_unique_cli_style_team_channels), OUTPUT_ARCHIVED_CHANNELS_FILENAME))
+        logger.info('\tFound %d archived channels. Writing file %s.txt to be used with Mattermost CLI to archive them.' % (len(mm_unique_cli_style_team_channels), OUTPUT_ARCHIVED_CHANNELS_FILENAME))
         write_space_separated_list(mm_unique_cli_style_team_channels, OUTPUT_ARCHIVED_CHANNELS_FILENAME)
 
     return mm_channels
