@@ -196,12 +196,12 @@ class UserChannelMembership:
 class ChannelNotifyProps:
     desktop = ''
     mobile = ''
-    mark_unread = 'mention' # 'all' or 'mention' Preference for marking channel as unread. Important to be mention during import
+    mark_unread = '' # 'all' or 'mention' Preference for marking channel as unread.
 
     def __init__(self):
         self.desktop = 'default'
         self.mobile = 'default'
-        self.mark_unread = 'mention'
+        self.mark_unread = 'all'
 
 class Channel:
     _archived = False
