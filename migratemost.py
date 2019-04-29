@@ -10,7 +10,6 @@ import re
 import sys
 import textwrap
 import time
-from enum import Enum
 from io import BytesIO
 from optparse import OptionParser, OptionGroup
 from PIL import Image
@@ -19,7 +18,6 @@ from unidecode import unidecode
 
 import amend_hipchat_rooms
 import migrate_hipchat_emoticons
-
 
 # Constants
 # Arguments:
