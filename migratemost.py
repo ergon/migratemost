@@ -55,7 +55,7 @@ TRAILING_DASHES_OR_UNDERSCORES_RE = re.compile('[-,_]*$')
 LEADING_DASHES_OR_UNDERSCORES_RE = re.compile('^[-,_]*')
 
 # Other
-FORMATTED_JSON_OUTPUT = False # Mattermost does not accept formatted (multiline) JSON, but it's sometimes handy for debugging
+FORMATTED_JSON_OUTPUT = False  # Mattermost doesn't accept formatted (multiline) JSON, but it's handy for debugging
 
 # Logging
 # setup logger
@@ -92,12 +92,15 @@ option_hipchat_amend_rooms = False
 option_migrate_hipchat_custom_emoticons = False
 option_migrate_hipchat_builtin_emoticons = False
 
-class Version(int): pass
+
+class Version(int):
+    pass
+
 
 class Team:
     name = ''
     display_name = ''
-    type = '' # "O" for an open team. "I" for an invite-only team.
+    type = ''  # "O" for an open team. "I" for an invite-only team.
     description = ''
     allow_open_invite = False
     scheme = ''
@@ -107,28 +110,29 @@ class Team:
         self.display_name = display_name
         self.type = 'I'
 
+
 class User:
     _hipchat_id = None
     _deleted = False
     _full_name = ''
-    profile_image = '' # path to image
-    username = '' # unique identifier of user
+    profile_image = ''  # path to image
+    username = ''  # unique identifier of user
     email = ''
     nickname = ''
     first_name = ''
     last_name = ''
     position = ''
-    roles = '' # 'system_user' or 'system_user system_admin'
+    roles = ''  # 'system_user' or 'system_user system_admin'
     locale = ''
 
-    auth_service = '' # defaults to password. other allowed: gitlab, ldap, saml, google, office365
-    auth_data = '' # id attribute if auth_service other than password is used
-    password = None # Only used if password auth_service selected. If none is specified, MM generates a new one
+    auth_service = ''  # defaults to password. other allowed: gitlab, ldap, saml, google, office365
+    auth_data = ''  # id attribute if auth_service other than password is used
+    password = None  # Only used if password auth_service selected. If none is specified, MM generates a new one
 
-    tutorial_step = '' # skip tutorial
-    show_unread_section = 'false' # Show unread messages at top of channel sidebar. Yes, a string 'false', not a bool, really...
-    military_time = 'true' # 24h time format. Yes, a string 'false', not a bool, again, really...
-    teams = [] # list of UserTeamMembership
+    tutorial_step = ''  # skip tutorial
+    show_unread_section = 'false'  # Show unread messages at top of channel sidebar. Yes, a string, not a bool, really.
+    military_time = 'true'  # 24h time format. Yes, a string 'false', not a bool, again, really...
+    teams = []  # list of UserTeamMembership
 
     def __init__(self, username, email, hipchat_id):
         self.username = lower(username)
@@ -137,7 +141,7 @@ class User:
         self._hipchat_id = int(hipchat_id)
         self.roles = 'system_user'
         self.locale = 'en'
-        self.tutorial_step = '999' if option_disable_tutorial else '1' # 999 means skip tutorial
+        self.tutorial_step = '999' if option_disable_tutorial else '1'  # 999 means skip tutorial
         self.show_unread_section = 'false'
         self.military_time = 'true'
 
@@ -149,7 +153,7 @@ class User:
             mm_user.roles = 'system_user system_admin'
         mm_user._deleted = hc_user[u'is_deleted']
         mm_user._full_name = hc_user[u'name']
-        full_name_parts = mm_user._full_name.rsplit(' ', 1) # Guessing full name parts
+        full_name_parts = mm_user._full_name.rsplit(' ', 1)  # Guessing full name parts
         if len(full_name_parts) == 2:
             mm_user.first_name = full_name_parts[0]
             mm_user.last_name = full_name_parts[1]
@@ -170,19 +174,21 @@ class User:
     def is_deleted(self):
         return self._deleted
 
+
 class UserTeamMembership:
     name = ''
-    roles = '' # 'team_user' or 'team_admin team_user'
-    channels = [] # list of UserChannelMembership
+    roles = ''  # 'team_user' or 'team_admin team_user'
+    channels = []  # list of UserChannelMembership
 
     def __init__(self, name):
         self.name = name
         self.roles = 'team_user'
 
+
 class UserChannelMembership:
     name = ''
-    roles = '' # 'channel_user' or 'channel_user channel_admin'
-    notify_props = None # instance of ChannelNotifyProps
+    roles = ''  # 'channel_user' or 'channel_user channel_admin'
+    notify_props = None  # instance of ChannelNotifyProps
     favorite = False
 
     def __init__(self, name):
@@ -191,15 +197,17 @@ class UserChannelMembership:
         self.favorite = False
         self.notify_props = ChannelNotifyProps()
 
+
 class ChannelNotifyProps:
     desktop = ''
     mobile = ''
-    mark_unread = '' # 'all' or 'mention' Preference for marking channel as unread.
+    mark_unread = ''  # 'all' or 'mention' Preference for marking channel as unread.
 
     def __init__(self):
         self.desktop = 'default'
         self.mobile = 'default'
         self.mark_unread = 'all'
+
 
 class Channel:
     _archived = False
@@ -207,28 +215,28 @@ class Channel:
     _hipchat_name = ''
     _admins = set()
     _owner = None
-    _members = set() # To answer your question, 'members' are users that have a membership in the room (used exclusively for private rooms) and 'participants' are users that are currently in a room. (https://community.atlassian.com/t5/Hipchat-questions/HIPCHAT-What-is-the-difference-quot-members-quot-amp-quot/qaq-p/461407)
+    _members = set()  # 'members': users with membership (only private rooms), 'participants': users currently in a room
     _participants = set()
     team = ''
     name = ''
     display_name = ''
-    type = 'O' # "O" for a public channel. "P" for a private channel.
+    type = 'O'  # "O" for a public channel. "P" for a private channel.
     header = ''
     purpose = ''
 
-    def __init__(self, team, name, display_name, type, hipchat_id, hipchat_name):
+    def __init__(self, team, name, display_name, channel_type, hipchat_id, hipchat_name):
         self.team = team
         self.name = name
         self.display_name = u"%s" % display_name
-        self.type = type
+        self.type = channel_type
         self._hipchat_id = hipchat_id
         self._hipchat_name = hipchat_name
 
     @classmethod
     def from_hc_room(cls, name, display_name, header, hc_room):
         hc_room_id = int(hc_room['id'])
-        type = 'O' if hc_room['privacy'] == 'public' else 'P'
-        mm_channel = Channel(default_team_name, name, display_name, type, hc_room_id, hc_room['name'])
+        channel_type = 'O' if hc_room['privacy'] == 'public' else 'P'
+        mm_channel = Channel(default_team_name, name, display_name, channel_type, hc_room_id, hc_room['name'])
         mm_channel.header = header
         mm_channel._archived = hc_room['is_archived']
         mm_channel._admins = set(hc_room['room_admins'])
@@ -264,6 +272,7 @@ class Channel:
     def get_cli_id(self):
         return '%s:%s' % (self.team, self.name)
 
+
 class Post:
     _valid = True
     _user_hc_id = 0
@@ -277,7 +286,7 @@ class Post:
     reactions = []
     attachments = []
 
-    def __init__(self,  team, channel, user, user_hc_id, message, create_at):
+    def __init__(self, team, channel, user, user_hc_id, message, create_at):
         self.team = team
         self.channel = channel
         self.user = user
@@ -292,13 +301,15 @@ class Post:
         attachments_valid = all([a.is_valid() for a in self.attachments])
         return self._valid and attachments_valid
 
+
 class DirectChannel:
-    members = [] # Must contain a list of members, with a minimum of two usernames and a maximum of eight usernames.
+    members = []  # Must contain a list of members, with a minimum of two usernames and a maximum of eight usernames.
     header = ''
     favorited_by = []
 
     def __init__(self, members):
         self.members = members
+
 
 class DirectPost:
     _valid = True
@@ -321,10 +332,11 @@ class DirectPost:
         attachments_valid = reduce((lambda a, b: a and b.is_valid()), self.attachments, True)
         return self._valid and attachments_valid
 
+
 class Attachment:
     _name = ''
     _valid = True
-    path = '' # The path to the file to be attached to the post.
+    path = ''  # The path to the file to be attached to the post.
 
     def __init__(self, path, name):
         self.path = path
@@ -336,22 +348,28 @@ class Attachment:
     def is_valid(self):
         return self._valid
 
+
 # Utility methods
 
 def camel_to_snake_case(name):
     s1 = FIRST_CAP_RE.sub(r'\1_\2', name)
     return ALL_CAP_RE.sub(r'\1_\2', s1).lower()
 
-def to_json(object):
-    type = camel_to_snake_case(object.__class__.__name__)
-    wrapped_object = { 'type': type,  type: object } # MM's JSON structure requires the objects to be wrapped and having the type specified
+
+def to_json(obj):
+    class_name = camel_to_snake_case(obj.__class__.__name__)
+    wrapped_object = {'type': class_name,
+                      class_name: obj}  # MM's JSON structure requires the objects to be wrapped with the type
     json_indent = 4 if FORMATTED_JSON_OUTPUT else None
     return json.dumps(wrapped_object,
-        default=lambda o: {k: v for k, v in o.__dict__.iteritems() if not k.startswith('_')}, # skip "private" fields
-        sort_keys=True, indent=json_indent)
+                      default=lambda o: {k: v for k, v in o.__dict__.iteritems() if not k.startswith('_')},
+                      # skip "private" fields
+                      sort_keys=True, indent=json_indent)
+
 
 def full_output_path(filename, extension='jsonl'):
     return '%s/%s.%s' % (migration_output_path, filename, extension)
+
 
 def write_mm_json(objects, filename):
     if len(objects) == 0:
@@ -363,40 +381,48 @@ def write_mm_json(objects, filename):
         for o in objects:
             output_file.writelines(to_json(o) + "\n")
 
+
 def write_space_separated_list(collection, filename):
     with open(full_output_path(filename, 'txt'), 'w') as output_file:
         output_file.write(' '.join(collection))
+
 
 def timestamp_from_date(date):
     d = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ %f")
     return int(d.strftime("%s")) * 1000 + d.microsecond / 1000
 
+
 def sanitize_message(message):
     # Translate Hipchat formatting to Mattermost and split too long messages
-    # List of slash commands in Hipchat: https://confluence.atlassian.com/hipchatdc3/keyboard-shortcuts-and-slash-commands-966656108.html
+    # List of slash commands in Hipchat:
+    # https://confluence.atlassian.com/hipchatdc3/keyboard-shortcuts-and-slash-commands-966656108.html
     message_parts = ['']
     if message.startswith("/code"):
-        sliced = textwrap.wrap(message[6:], MM_MAX_MESSAGE_LENGTH - 8) # shorten 8 to make room for formatting characters
+        sliced = textwrap.wrap(message[6:],
+                               MM_MAX_MESSAGE_LENGTH - 8)  # shorten 8 to make room for formatting characters
         message_parts = ["```\n%s\n```" % m for m in sliced]
     elif message.startswith("/quote"):
-        sliced = textwrap.wrap(message[7:], MM_MAX_MESSAGE_LENGTH - 3) # shorten 3 to make room for formatting characters
+        sliced = textwrap.wrap(message[7:],
+                               MM_MAX_MESSAGE_LENGTH - 3)  # shorten 3 to make room for formatting characters
         message_parts = ["> %s\n" % m for m in sliced]
     else:
         message_parts = textwrap.wrap(message, MM_MAX_MESSAGE_LENGTH)
 
     return message_parts if len(message_parts) > 0 else ['']
 
+
 def is_invalid_image(full_attachment_path):
     try:
         image = Image.open(full_attachment_path)
         image_size = sys.getsizeof(image.tobytes())
     except:
-        return False # not an image
+        return False  # not an image
 
     if image_size >= MM_MAX_IMAGE_IN_MEMORY_SIZE_BYTES:
-        return True # image too large for uploading
+        return True  # image too large for uploading
     else:
-        return False # valid image
+        return False  # valid image
+
 
 def is_valid_attachment(full_attachment_path):
     if not os.path.exists(full_attachment_path):
@@ -410,6 +436,7 @@ def is_valid_attachment(full_attachment_path):
         return False
     return True
 
+
 def contains_unicode(s):
     try:
         s.encode(encoding='utf-8').decode('ascii')
@@ -418,24 +445,27 @@ def contains_unicode(s):
     else:
         return False
 
+
 def sanitize_name(name):
     name = unidecode(u'%s' % name) if contains_unicode(name) else name
     name = lower(name)
-    name = re.sub('\s', '-', name) # whitespaces are not allowed
+    name = re.sub('\s', '-', name)  # whitespaces are not allowed
     # by default, all non alphanumeric charaters will be replaced with underscore
     # if this is a too broad replacement for you or causes clashes of channel names,
     # add any special requirements for channel name conversion here
     name = re.sub('[^a-z0-9\-]', '_', name)
-    name = re.sub('^(\d)$', 'number_\\1', name) # leading digits are not allowed
-    name = CONSECUTIVE_DASHES_RE.sub('-', name) # beautification, multiple dashes in a row are allowed
-    name = TRAILING_DASHES_OR_UNDERSCORES_RE.sub('', name) # trailing dashes or underscores are not allowed
-    name = LEADING_DASHES_OR_UNDERSCORES_RE.sub('', name) # leading dashes or underscores are not allowed
+    name = re.sub('^(\d)$', 'number_\\1', name)  # leading digits are not allowed
+    name = CONSECUTIVE_DASHES_RE.sub('-', name)  # beautification, multiple dashes in a row are allowed
+    name = TRAILING_DASHES_OR_UNDERSCORES_RE.sub('', name)  # trailing dashes or underscores are not allowed
+    name = LEADING_DASHES_OR_UNDERSCORES_RE.sub('', name)  # leading dashes or underscores are not allowed
     return str(name.decode('UTF-8'))
+
 
 def sanitize_channel_display_name_or_header(name):
     name = re.sub(r'\\', r'\\\\', name)
     name = re.sub('"', r'\"', name)
     return name
+
 
 def load_hipchat_users():
     with open('%s/users.json' % migration_input_path, 'r') as hc_users_file:
@@ -443,16 +473,21 @@ def load_hipchat_users():
         flattened_users = [u[u'User'] for u in users]
         return flattened_users
 
+
 def load_hipchat_user_history(user_id):
     with open('%s/users/%d/history.json' % (migration_input_path, user_id), 'r') as hc_history_file:
         return json.load(hc_history_file)
 
+
 def load_hipchat_rooms():
-    input_file = '%s/%s' % (migration_output_path, OUTPUT_HC_ROOMS_AMENDED_FILENAME) if option_hipchat_amend_rooms else '%s/rooms.json' % (migration_input_path)
+    input_file = '%s/%s' % (
+        migration_output_path, OUTPUT_HC_ROOMS_AMENDED_FILENAME) if option_hipchat_amend_rooms \
+        else '%s/rooms.json' % migration_input_path
     with open(input_file, 'r') as hc_rooms_file:
         rooms = json.load(hc_rooms_file)
         flattened_rooms = list(map(lambda u: u[u'Room'], rooms))
         return flattened_rooms
+
 
 def load_hipchat_room_history(room_id):
     with open('%s/rooms/%d/history.json' % (migration_input_path, room_id), 'r') as hc_history_file:
@@ -466,10 +501,12 @@ def load_hipchat_room_history(room_id):
         flattened_messages = [m['UserMessage'] for m in user_messages]
         return flattened_messages;
 
+
 def load_redis_autojoin():
     with open('%s/%s' % (migration_input_path, INPUT_HC_REDIS_AUTOJOIN_FILENAME), 'r') as hc_autojoin_file:
         autojoins = json.load(hc_autojoin_file)
         return autojoins['autojoins']
+
 
 def concat_files(input_file_paths, output_file_name):
     with open(full_output_path(output_file_name), 'w') as output_file:
@@ -478,11 +515,13 @@ def concat_files(input_file_paths, output_file_name):
         for input_file_path in input_file_paths:
             with open(input_file_path, 'r') as input_file:
                 iter_lines = iter(input_file)
-                next(iter_lines) # skip version line as it should only occur once per file
+                next(iter_lines)  # skip version line as it should only occur once per file
                 output_file.writelines(iter_lines)
+
 
 def migrate_team():
     return Team(default_team_name, default_team_display_name)
+
 
 def store_base64_image(data, path, filename):
     img = Image.open(BytesIO(base64.b64decode(data)))
@@ -490,6 +529,7 @@ def store_base64_image(data, path, filename):
     with open(img_path, 'wb') as f:
         img.save(f)
     return img_path
+
 
 def migrate_users():
     hc_users = load_hipchat_users()
@@ -505,7 +545,8 @@ def migrate_users():
 
         mm_user = User.from_hc_user(hc_user)
         if hc_user['avatar'] is not None and option_migrate_avatars:
-            avatar_path = store_base64_image(hc_user['avatar'], avatar_output_path, 'mm_user_%s_avatar' % mm_user.get_hc_id())
+            avatar_path = store_base64_image(hc_user['avatar'], avatar_output_path,
+                                             'mm_user_%s_avatar' % mm_user.get_hc_id())
             mm_user.profile_image = avatar_path
         mm_users.append(mm_user)
 
@@ -513,10 +554,13 @@ def migrate_users():
     deleted_users_usernames = set(map(lambda u: u.username, deleted_users))
 
     if len(deleted_users) > 0:
-        logger.info('\tFound %d deleted users. Writing file %s.txt to be used with Mattermost CLI to deactivate them.' % (len(deleted_users), OUTPUT_DELETED_USERS_FILENAME))
+        logger.info(
+            '\tFound %d deleted users. Writing file %s.txt to be used with Mattermost CLI to deactivate them.' % (
+                len(deleted_users), OUTPUT_DELETED_USERS_FILENAME))
         write_space_separated_list(sorted(deleted_users_usernames), OUTPUT_DELETED_USERS_FILENAME)
 
     return mm_users
+
 
 def migrate_direct_posts(mm_username_by_hc_id, mm_user):
     hc_user_id = mm_user.get_hc_id()
@@ -557,6 +601,7 @@ def migrate_direct_posts(mm_username_by_hc_id, mm_user):
 
     return mm_direct_posts
 
+
 def migrate_attachment(hc_attachment, subpath):
     hc_attachment_path = u"%s" % hc_attachment['path']
     hc_attachment_name = u"%s" % hc_attachment['name']
@@ -569,8 +614,9 @@ def migrate_attachment(hc_attachment, subpath):
 
     return mm_attachment
 
+
 def migrate_direct_channels(direct_channel_user_pairs):
-    unique_user_pairs = set(direct_channel_user_pairs) # given user_pairs is a list of frozenset
+    unique_user_pairs = set(direct_channel_user_pairs)  # given user_pairs is a list of frozenset
     mm_direct_channels = []
     for p in unique_user_pairs:
         if len(p) == 1:
@@ -581,6 +627,7 @@ def migrate_direct_channels(direct_channel_user_pairs):
             mm_direct_channels.append(DirectChannel(list(p)))
 
     return mm_direct_channels
+
 
 def migrate_channels():
     hc_rooms = load_hipchat_rooms()
@@ -607,10 +654,13 @@ def migrate_channels():
 
     if len(mm_archived_channels) > 0:
         mm_unique_cli_style_team_channels = set(map(lambda c: c.get_cli_id(), mm_archived_channels))
-        logger.info('\tFound %d archived channels. Writing file %s.txt to be used with Mattermost CLI to archive them.' % (len(mm_unique_cli_style_team_channels), OUTPUT_ARCHIVED_CHANNELS_FILENAME))
+        logger.info(
+            '\tFound %d archived channels. Writing file %s.txt to be used with Mattermost CLI to archive them.' % (
+                len(mm_unique_cli_style_team_channels), OUTPUT_ARCHIVED_CHANNELS_FILENAME))
         write_space_separated_list(mm_unique_cli_style_team_channels, OUTPUT_ARCHIVED_CHANNELS_FILENAME)
 
     return mm_channels
+
 
 def migrate_channel_posts(mm_username_by_hc_id, mm_channel):
     hc_room_history = load_hipchat_room_history(mm_channel.get_hc_id())
@@ -642,9 +692,10 @@ def migrate_channel_posts(mm_username_by_hc_id, mm_channel):
 
     return mm_posts
 
+
 def migrate_user_channel_membership(mm_channels, mm_user):
     member_of_channels = list(filter(lambda c: mm_user.get_hc_id() in c.get_channel_members_hc_ids(), mm_channels))
-    admin_of_channels =  list(filter(lambda c: mm_user.get_hc_id() in c.get_channel_admins_hc_ids(), mm_channels))
+    admin_of_channels = list(filter(lambda c: mm_user.get_hc_id() in c.get_channel_admins_hc_ids(), mm_channels))
 
     if not option_join_public_channels:
         member_of_channels = list(filter(lambda c: c.is_private(), member_of_channels))
@@ -664,18 +715,22 @@ def migrate_user_channel_membership(mm_channels, mm_user):
 
     return channel_memberships
 
+
 def redis_participants_by_room_name():
     autojoins = load_redis_autojoin()
     participants_by_room_name = dict()
     for a in autojoins:
         hc_user_id = a['user_id']
-        hc_room_names_to_join = [r['name'] for r in a['rooms'] if r['jid'].endswith('conf.btf.hipchat.com')] # filter out 1:1 chats ending on chat.btf.hipchat.com
+        hc_room_names_to_join = [r['name'] for r in a['rooms'] if r['jid'].endswith(
+            'conf.btf.hipchat.com')]  # filter out 1:1 chats ending on chat.btf.hipchat.com
         for room_name in hc_room_names_to_join:
-            participants_by_room_name.setdefault(room_name,[]).append(hc_user_id)
+            participants_by_room_name.setdefault(room_name, []).append(hc_user_id)
     return participants_by_room_name
+
 
 def _parse_comma_separated_argument(option, opt_str, value, parser):
     setattr(parser.values, option.dest, value.split(','))
+
 
 def parse_arguments():
     global default_team_name
@@ -704,157 +759,162 @@ def parse_arguments():
     global option_migrate_hipchat_custom_emoticons
     global option_migrate_hipchat_builtin_emoticons
 
-    parser = OptionParser(usage =
-        '''usage: %prog [options]
+    parser = OptionParser(usage=
+                          '''usage: %prog [options]
         Converts a Hipchat export to Mattermost bulk import files.
         By default, only the team and users are migrated, for more options see "Migration Options"''')
     parser.add_option("-t", "--team",
-        dest="default_team_display_name",
-        action="store",
-        type="string",
-        help="Default team name to which all users are assigned")
+                      dest="default_team_display_name",
+                      action="store",
+                      type="string",
+                      help="Default team name to which all users are assigned")
     parser.add_option("-o", "--output-path",
-        dest="output_path",
-        action="store",
-        type="string",
-        help="Output path where migration files will be placed. Defaults to current directory.")
+                      dest="output_path",
+                      action="store",
+                      type="string",
+                      help="Output path where migration files will be placed. Defaults to current directory.")
     parser.add_option("-i", "--input-path",
-        dest="input_path",
-        action="store",
-        type="string",
-        help="Path to Hipchat export (the 'data' directory of the extracted export. Defaults to current directory.)")
+                      dest="input_path",
+                      action="store",
+                      type="string",
+                      help="Path to Hipchat export (the 'data' directory of the extracted export. Defaults to current directory.)")
     parser.add_option("-v", "--verbose",
-        dest="verbose",
-        action="store_true",
-        default=False,
-        help="Enable verbose logging")
+                      dest="verbose",
+                      action="store_true",
+                      default=False,
+                      help="Enable verbose logging")
     parser.add_option("--concat-output",
-        dest="concat_output_files",
-        action="store_true",
-        default=False,
-        help="Concatenate all output files into one after conversion is done. Mattermost bulk import seems to be much faster with one large files instead of many smaller ones.")
+                      dest="concat_output_files",
+                      action="store_true",
+                      default=False,
+                      help="Concatenate all output files into one after conversion is done. Mattermost bulk import seems to be much faster with one large files instead of many smaller ones.")
 
     parser_migration_group = OptionGroup(parser, "Migration Options",
-        "These options control what data should be migrated")
+                                         "These options control what data should be migrated")
     parser_migration_group.add_option("--migrate-all",
-        dest="migrate_all",
-        action="store_true",
-        default=False,
-        help="Use to migrate everything (recommended)")
+                                      dest="migrate_all",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to migrate everything (recommended)")
     parser_migration_group.add_option("--migrate-direct-posts",
-        dest="migrate_direct_posts",
-        action="store_true",
-        default=False,
-        help="Use to migrate direct posts (1:1 in Hipchat)")
+                                      dest="migrate_direct_posts",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to migrate direct posts (1:1 in Hipchat)")
     parser_migration_group.add_option("--migrate-channels",
-        dest="migrate_channels",
-        action="store_true",
-        default=False,
-        help="Use to migrate channels without the posts (rooms in Hipchat)")
+                                      dest="migrate_channels",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to migrate channels without the posts (rooms in Hipchat)")
     parser_migration_group.add_option("--migrate-channel-posts",
-        dest="migrate_channel_posts",
-        action="store_true",
-        default=False,
-        help="Use to migrate channels including the posts (rooms and messages in Hipchat)")
+                                      dest="migrate_channel_posts",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to migrate channels including the posts (rooms and messages in Hipchat)")
     parser_migration_group.add_option("--migrate-avatars",
-        dest="migrate_avatars",
-        action="store_true",
-        default=False,
-        help="Use to migrate users avatars")
+                                      dest="migrate_avatars",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to migrate users avatars")
     parser_migration_group.add_option("--skip-archived-rooms",
-        dest="skip_archived_rooms",
-        action="store_true",
-        default=False,
-        help="Use to to not migrate rooms that are marked as archived in Hipchat")
+                                      dest="skip_archived_rooms",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to to not migrate rooms that are marked as archived in Hipchat")
     parser_migration_group.add_option("--disable-tutorial",
-        dest="disable_tutorial",
-        action="store_true",
-        default=False,
-        help="Use to to disable introductory tutorial of Mattermost upon first logon for all users")
+                                      dest="disable_tutorial",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to to disable introductory tutorial of Mattermost upon first logon for all users")
 
     public_room_membership_intro = 'Use to have users join public channels if they were member of the corresponding room in Hipchat.'
     public_room_membership_disclaimer = 'DISCLAIMER: Getting reliable public room memberships out of Hipchat is not easy. See README.md for more details.'
     parser_migration_group.add_option("--public-channel-membership-based-on-hipchat-export",
-        dest="public_channel_membership_based_on_export",
-        action="store_true",
-        default=False,
-        help='%s Room membership is evaluated based on Hipchat export and can be amended using the "--amend-rooms" option. %s' % (public_room_membership_intro, public_room_membership_disclaimer))
+                                      dest="public_channel_membership_based_on_export",
+                                      action="store_true",
+                                      default=False,
+                                      help='%s Room membership is evaluated based on Hipchat export and can be amended using the "--amend-rooms" option. %s' % (
+                                          public_room_membership_intro, public_room_membership_disclaimer))
     parser_migration_group.add_option("--public-channel-membership-based-on-messages",
-        dest="public_channel_membership_based_on_messages",
-        action="store_true",
-        default=False,
-        help='%s Room membership is based on if a user has ever written a message in the room. %s' % (public_room_membership_intro, public_room_membership_disclaimer))
+                                      dest="public_channel_membership_based_on_messages",
+                                      action="store_true",
+                                      default=False,
+                                      help='%s Room membership is based on if a user has ever written a message in the room. %s' % (
+                                          public_room_membership_intro, public_room_membership_disclaimer))
     parser_migration_group.add_option("--public-channel-membership-based-on-redis-export",
-        dest="public_channel_membership_based_on_redis",
-        action="store_true",
-        default=False,
-        help='%s Room membership is evaluated using a Redis export. Requires the output of the "redis_autjoin.sh" script to be at the input path. %s' % (public_room_membership_intro, public_room_membership_disclaimer))
+                                      dest="public_channel_membership_based_on_redis",
+                                      action="store_true",
+                                      default=False,
+                                      help='%s Room membership is evaluated using a Redis export. Requires the output of the "redis_autjoin.sh" script to be at the input path. %s' % (
+                                          public_room_membership_intro, public_room_membership_disclaimer))
 
     parser_migration_group.add_option("--apply-admin-team-role",
-        dest="apply_admin_team_role",
-        action="store_true",
-        default=False,
-        help="Use to give users team admin role in Mattermost if they had Hipchat admin rights.")
+                                      dest="apply_admin_team_role",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to give users team admin role in Mattermost if they had Hipchat admin rights.")
     parser_migration_group.add_option("--apply-admin-system-role",
-        dest="apply_admin_system_role",
-        action="store_true",
-        default=False,
-        help="Use to give users system admin role in Mattermost if they had Hipchat admin rights.")
+                                      dest="apply_admin_system_role",
+                                      action="store_true",
+                                      default=False,
+                                      help="Use to give users system admin role in Mattermost if they had Hipchat admin rights.")
     parser_migration_group.add_option("--map-town-square-channel",
-        dest="town_square_source_room_name",
-        action="store",
-        type="string",
-        help="Map a Hipchat room to the town-square channel (default channel)"
-    )
+                                      dest="town_square_source_room_name",
+                                      action="store",
+                                      type="string",
+                                      help="Map a Hipchat room to the town-square channel (default channel)"
+                                      )
     parser_migration_group.add_option("--filter-users",
-        dest="filter_users",
-        action="store",
-        type="string",
-        help="Filter Hipchat users by e-mail address using regex (important: filtered users must not occur in chat history)"
-    )
+                                      dest="filter_users",
+                                      action="store",
+                                      type="string",
+                                      help="Filter Hipchat users by e-mail address using regex (important: filtered users must not occur in chat history)"
+                                      )
 
     parser_hipchat_group = OptionGroup(parser, "Hipchat Export Options",
-        "These options control data which will be fetched from Hipchat to amend the export")
+                                       "These options control data which will be fetched from Hipchat to amend the export")
     parser_hipchat_group.add_option("--amend-rooms",
-        dest="amend_rooms",
-        action="store_true",
-        default=False,
-        help="Use to amend rooms exported by Hipchat with proper participant and member lists (recommended)")
+                                    dest="amend_rooms",
+                                    action="store_true",
+                                    default=False,
+                                    help="Use to amend rooms exported by Hipchat with proper participant and member lists (recommended)")
     parser_hipchat_group.add_option("--migrate-custom-emoticons",
-        dest="migrate_custom_emoticons",
-        action="store_true",
-        default=False,
-        help="Use to migrate custom Hipchat emoticons")
+                                    dest="migrate_custom_emoticons",
+                                    action="store_true",
+                                    default=False,
+                                    help="Use to migrate custom Hipchat emoticons")
     parser_hipchat_group.add_option("--migrate-builtin-emoticons",
-        dest="migrate_builtin_emoticons",
-        action="store_true",
-        default=False,
-        help="Use to migrate Hipchat built-in emoticons")
+                                    dest="migrate_builtin_emoticons",
+                                    action="store_true",
+                                    default=False,
+                                    help="Use to migrate Hipchat built-in emoticons")
     parser_hipchat_group.add_option("--hipchat-base-url",
-        dest="hipchat_base_url",
-        action="store",
-        type="string",
-        help="Base URL of the Hipchat API, e.g. https://hipchat.mycompany.ch/v2/")
+                                    dest="hipchat_base_url",
+                                    action="store",
+                                    type="string",
+                                    help="Base URL of the Hipchat API, e.g. https://hipchat.mycompany.ch/v2/")
     parser_hipchat_group.add_option("--hipchat-access-tokens",
-        dest='hipchat_token_list',
-        type='string',
-        action='callback',
-        callback=_parse_comma_separated_argument,
-        help='''Comma-separated list of access option_tokens with "View Room" and "View Group" scope.
+                                    dest='hipchat_token_list',
+                                    type='string',
+                                    action='callback',
+                                    callback=_parse_comma_separated_argument,
+                                    help='''Comma-separated list of access option_tokens with "View Room" and "View Group" scope.
 Providing many option_tokens speeds up the the API calls, as Hipchat has a hardcoded 100 requests per token per 5 minutes rate limit.''')
 
     parser_authentication_group = OptionGroup(parser, "Authentication Options",
-        "These options control what authentication settings should be applied to the migrated users.")
+                                              "These options control what authentication settings should be applied to the migrated users.")
     parser_authentication_group.add_option("--authentication-service",
-        dest="authentication_service",
-        action="store",
-        type="string",
-        help="Which authentication type to use, defaults to password (Mattermost built-in authentication).\nIf provided, must be one of: %s" % ', '.join(ALLOWED_AUTH_SERVICES))
+                                           dest="authentication_service",
+                                           action="store",
+                                           type="string",
+                                           help="Which authentication type to use, defaults to password (Mattermost built-in authentication).\nIf provided, must be one of: %s" % ', '.join(
+                                               ALLOWED_AUTH_SERVICES))
     parser_authentication_group.add_option("--authentication-data-field",
-        dest="authentication_data_field",
-        action="store",
-        type="string",
-        help="Which user field to use for authentication service, only relevant if other than Mattermost built-in service is used.\nValid choices are: %s" % ', '.join(ALLOWED_AUTH_DATA_FIELDS))
+                                           dest="authentication_data_field",
+                                           action="store",
+                                           type="string",
+                                           help="Which user field to use for authentication service, only relevant if other than Mattermost built-in service is used.\nValid choices are: %s" % ', '.join(
+                                               ALLOWED_AUTH_DATA_FIELDS))
 
     parser.add_option_group(parser_migration_group)
     parser.add_option_group(parser_authentication_group)
@@ -974,7 +1034,8 @@ def main():
     if option_hipchat_amend_rooms:
         logger.info('Amending Hipchat room export')
         input_file = '%s/rooms.json' % migration_input_path
-        amend_hipchat_rooms.amend_rooms(input_file, migration_output_path, OUTPUT_HC_ROOMS_AMENDED_FILENAME, option_hipchat_base_url, option_hipchat_tokens)
+        amend_hipchat_rooms.amend_rooms(input_file, migration_output_path, OUTPUT_HC_ROOMS_AMENDED_FILENAME,
+                                        option_hipchat_base_url, option_hipchat_tokens)
         logger.info('Amending room export finished')
 
     logger.info('Team migration started')
@@ -1038,9 +1099,10 @@ def main():
         for mm_user in mm_users:
             channel_memberships = migrate_user_channel_membership(mm_channels, mm_user)
             if len(channel_memberships) > MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER:
-                logger.warning("Encountered user (username: %s) with too many channel memberships (%d of %d allowed). Skipping channel memberships!"
-                                % (mm_user.username, len(channel_memberships), MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER))
-            mm_user.teams[0].channels = channel_memberships[0:MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER-1]
+                logger.warning(
+                    "Encountered user (username: %s) with too many channel memberships (%d of %d allowed). Skipping channel memberships!"
+                    % (mm_user.username, len(channel_memberships), MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER))
+            mm_user.teams[0].channels = channel_memberships[0:MM_MAX_CHANNEL_MEMBERSHIPS_PER_USER - 1]
 
         logger.info('Channel migration finished')
 
@@ -1049,14 +1111,14 @@ def main():
 
     if option_migrate_hipchat_custom_emoticons or option_migrate_hipchat_builtin_emoticons:
         logger.info('Emoticon migration started')
-        migrate_hipchat_emoticons.migrate_emoticons(migration_output_path, option_hipchat_base_url, option_hipchat_tokens, option_migrate_hipchat_builtin_emoticons)
+        migrate_hipchat_emoticons.migrate_emoticons(migration_output_path, option_hipchat_base_url,
+                                                    option_hipchat_tokens, option_migrate_hipchat_builtin_emoticons)
         logger.info('Emoticon migration finished')
 
     if option_concat_import_files:
         logger.info('Concat all migration files into %s.jsonl' % OUTPUT_ALL_IN_ONE_FILENAME)
 
-        input_files = []
-        input_files.append(full_output_path(OUTPUT_TEAM_FILENAME))
+        input_files = [full_output_path(OUTPUT_TEAM_FILENAME)]
 
         if option_migrate_hipchat_builtin_emoticons or option_migrate_hipchat_custom_emoticons:
             input_files.append(full_output_path(OUTPUT_EMOJI_FILENAME))
@@ -1068,11 +1130,11 @@ def main():
 
         if option_migrate_direct_posts:
             input_files.append(full_output_path(OUTPUT_DIRECT_CHANNELS_FILENAME))
-            direct_post_files = glob.glob('%s/%s*.jsonl' % ((migration_output_path, OUTPUT_DIRECT_POSTS_FILENAME)))
+            direct_post_files = glob.glob('%s/%s*.jsonl' % (migration_output_path, OUTPUT_DIRECT_POSTS_FILENAME))
             input_files.extend(direct_post_files)
 
         if option_migrate_channels:
-            channel_posts_files = glob.glob('%s/%s*.jsonl' % ((migration_output_path, OUTPUT_CHANNEL_POSTS_FILENAME)))
+            channel_posts_files = glob.glob('%s/%s*.jsonl' % (migration_output_path, OUTPUT_CHANNEL_POSTS_FILENAME))
             input_files.extend(channel_posts_files)
 
         concat_files(input_files, OUTPUT_ALL_IN_ONE_FILENAME)
@@ -1086,10 +1148,10 @@ def main():
         Total direct posts migrated: %d
         Total channels migrated: %d
         Total channel posts migrated: %d''' % (elapsed_time_minutes, elapsed_time_seconds,
-            stats_total_users,
-            stats_total_direct_posts,
-            stats_total_channels,
-            stats_total_channel_posts))
+                                               stats_total_users,
+                                               stats_total_direct_posts,
+                                               stats_total_channels,
+                                               stats_total_channel_posts))
 
     import_help_text = '''
         mode=validate # or 'apply' once validation is successful
@@ -1120,8 +1182,10 @@ def main():
                   echo "Importing: $filename"
                   $mattermost_path/mattermost import bulk $filename --$mode
                 done
-        ''' % (import_help_text, OUTPUT_EMOJI_FILENAME, OUTPUT_TEAM_FILENAME, OUTPUT_CHANNELS_FILENAME, OUTPUT_USERS_FILENAME,
-        OUTPUT_DIRECT_CHANNELS_FILENAME, OUTPUT_DIRECT_POSTS_FILENAME, OUTPUT_CHANNEL_POSTS_FILENAME))
+        ''' % (
+            import_help_text, OUTPUT_EMOJI_FILENAME, OUTPUT_TEAM_FILENAME, OUTPUT_CHANNELS_FILENAME,
+            OUTPUT_USERS_FILENAME,
+            OUTPUT_DIRECT_CHANNELS_FILENAME, OUTPUT_DIRECT_POSTS_FILENAME, OUTPUT_CHANNEL_POSTS_FILENAME))
 
     deleted_users_full_path = full_output_path(OUTPUT_DELETED_USERS_FILENAME, 'txt')
     if os.path.exists(deleted_users_full_path):
@@ -1140,6 +1204,7 @@ def main():
     logger.info('''
         Run mark_as_read.py after the import has finished in order to mark all imported posts as read.
     ''')
+
 
 if __name__ == "__main__":
     main()
