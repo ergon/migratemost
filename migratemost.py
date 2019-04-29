@@ -475,7 +475,10 @@ def load_hipchat_users():
 
 
 def load_hipchat_user_history(user_id):
-    with open('%s/users/%d/history.json' % (migration_input_path, user_id), 'r') as hc_history_file:
+    user_history_path = '%s/users/%d/history.json' % (migration_input_path, user_id)
+    if not os.path.exists(user_history_path):
+        return [] # ignore missing history files, required for users that were deleted in Hipchat
+    with open(user_history_path, 'r') as hc_history_file:
         return json.load(hc_history_file)
 
 
