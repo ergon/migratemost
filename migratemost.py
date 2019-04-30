@@ -240,10 +240,20 @@ class Channel:
         mm_channel.header = header
         mm_channel._archived = hc_room['is_archived']
         mm_channel._admins = set(hc_room['room_admins'])
-        mm_channel._members = set(hc_room['members'])
+        mm_channel._members = Channel.hc_members_to_ids(hc_room['members'])
         mm_channel._participants = set(hc_room['participants'])
         mm_channel._owner = hc_room['owner']
         return mm_channel
+
+    @classmethod
+    def hc_members_to_ids(cls, members):
+        ids = []
+        for m in members:
+            if isinstance(m, dict):
+                ids.append(m['id'])
+            else:
+                ids.append(m)
+        return set(ids)
 
     def is_private(self):
         return self.type == 'P'
