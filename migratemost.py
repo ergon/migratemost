@@ -162,7 +162,10 @@ class User:
             mm_default_membership.roles = 'team_admin team_user'
         mm_user.teams = [mm_default_membership]
         mm_user.auth_service = default_auth_service
-        mm_user.auth_data = mm_user.username if default_auth_data_field == 'username' else mm_user.email
+        if default_auth_data_field == 'username':
+            mm_user.auth_data = mm_user.username
+        elif default_auth_data_field == 'email':
+            mm_user.auth_data = mm_user.email
         return mm_user
 
     def has_hc_id(self, hc_id):
@@ -1022,12 +1025,17 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
         default_auth_service = lower(options.authentication_service)
         if not default_auth_service in ALLOWED_AUTH_SERVICES:
             parser.error("Illegal authentication service")
-        if options.authentication_data_field:
-            default_auth_data_field = lower(options.authentication_data_field)
-            if not default_auth_data_field in ALLOWED_AUTH_DATA_FIELDS:
-                parser.error("Illegal authentication data field")
-        else:
-            default_auth_data_field = 'username'
+
+        if default_auth_service == 'ldap':
+            if options.authentication_data_field:
+                default_auth_data_field = lower(options.authentication_data_field)
+                if not default_auth_data_field in ALLOWED_AUTH_DATA_FIELDS:
+                    parser.error("Illegal authentication data field")
+            else:
+                default_auth_data_field = 'username'
+        elif default_auth_service == 'password':
+            default_auth_service = ''
+            default_auth_data_field = ''
     else:
         default_auth_service = ''
         default_auth_data_field = ''
