@@ -660,6 +660,9 @@ def migrate_channels():
             display_name = 'Town Square'
         else:
             name = sanitize_name(hc_room['name'])
+            if not name:
+                # channel name contained only invalid characters
+                name = 'channel_hc_%s' % hc_room['id']
             display_name = sanitize_channel_display_name_or_header(hc_room['name'])
 
         header = sanitize_channel_display_name_or_header(hc_room['topic'])
