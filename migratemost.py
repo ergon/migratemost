@@ -593,8 +593,16 @@ def migrate_direct_posts(mm_username_by_hc_id, mm_user):
         if sender_hc_id != hc_user_id:
             continue
 
-        sender_mm_username = mm_username_by_hc_id[sender_hc_id]
-        receiver_mm_username = mm_username_by_hc_id[receiver_hc_id]
+        try:
+            sender_mm_username = mm_username_by_hc_id[sender_hc_id]
+        except KeyError:
+            logger.error('Could not find sender with Hipchat ID %s of direct post' % sender_hc_id)
+            exit(1)
+        try:
+            receiver_mm_username = mm_username_by_hc_id[receiver_hc_id]
+        except KeyError:
+            logger.error('Could not find receiver with Hipchat ID %s of direct post' % sender_hc_id)
+            exit(1)
         timestamp = timestamp_from_date(hc_message['timestamp'])
         message_parts = sanitize_message(hc_message['message'])
 
