@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import urllib2, base64, json, urllib,sys
+import urllib2, base64, json, urllib,sys, urlparse
 from optparse import OptionParser
 import getpass
 
@@ -86,7 +86,7 @@ def get_arguments():
                       dest="base_url",
                       action="store",
                       type="string",
-                      help="Base URL of Mattermost installation (mandatory), e.g. 'https://mattermost.mycompany.ch/api/v4'")
+                      help="Base URL of Mattermost installation (mandatory), e.g. 'https://mattermost.mycompany.ch/'")
     parser.add_option("-t", "--team",
                       dest="team",
                       action="store",
@@ -111,7 +111,7 @@ def get_arguments():
     else:
         access_token = options.token
 
-    base_url = options.base_url
+    base_url = urlparse.urljoin('options.base_url', '/api/v4')
     team_name = options.team
 
 def main():
