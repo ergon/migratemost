@@ -111,8 +111,11 @@ def get_arguments():
     else:
         access_token = options.token
 
-    base_url = urlparse.urljoin('options.base_url', '/api/v4')
+    base_url = urlparse.urljoin(options.base_url, '/api/v4')
     team_name = options.team
+    print("team_name", team_name)
+    print("base_url = ", base_url)
+    print("options.base_url", options.base_url)
 
 def main():
     get_arguments()
