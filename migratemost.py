@@ -10,6 +10,7 @@ import re
 import sys
 import textwrap
 import time
+import math
 from io import BytesIO
 from optparse import OptionParser, OptionGroup
 from PIL import Image
@@ -38,8 +39,8 @@ OUTPUT_HC_ROOMS_AMENDED_FILENAME = 'hc_rooms_amended.json'
 INPUT_HC_REDIS_AUTOJOIN_FILENAME = 'autojoin.json'
 
 # Checks:
-# according to: https://forum.mattermost.org/t/file-above-maximum-dimensions-couldnt-be-uploaded/4705/7
-MM_MAX_IMAGE_IN_MEMORY_SIZE_BYTES = 36 * 1024 * 1024
+# https://github.com/mattermost/mattermost-server/blob/cee1e3685968cbf84b8b655bf438fb6d34a612e5/app/file.go#L696
+MM_MAX_IMAGE_PIXELS = 24385536
 # Default mm configuration in FileSettings: MaxFileSize
 MM_MAX_FILE_ATTACHMENT_SIZE_BYTES = 52428800
 # By experimentation (admin user tends to get a lot of memberships due to abandoned rooms)
@@ -428,14 +429,13 @@ def sanitize_message(message):
 def is_invalid_image(full_attachment_path):
     try:
         image = Image.open(full_attachment_path)
-        image_size = sys.getsizeof(image.tobytes())
+        pixels = image.width*image.height
     except:
         return False  # not an image
 
-    if image_size >= MM_MAX_IMAGE_IN_MEMORY_SIZE_BYTES:
+    if pixels >= MM_MAX_IMAGE_PIXELS:
         if option_shrink_image_to_limit:
-            # max dimension is 6048*4032
-            image = get_shrinked_image(image)
+            image = get_shrinked_image(image, pixels)
             image.save(full_attachment_path)
             return False
         else:
@@ -443,20 +443,13 @@ def is_invalid_image(full_attachment_path):
     else:
         return False  # valid image
 
-def get_shrinked_image(img):
-    max_width = 6048
-    max_height = 4032
+def get_shrinked_image(img, pixels):
+    scale_ratio = float(pixels) / MM_MAX_IMAGE_PIXELS
+    root = math.sqrt(scale_ratio)
+    new_width = int(img.width / root)
+    new_height = int(img.height / root)
 
-    width = img.size[0]
-    height = img.size[1]
-    if width >= height:
-        img_ratio = float(float(width) / height)
-        size_new = max_width,int(max_width/float(img_ratio))
-    else:
-        img_ratio = float(float(height) / width)
-        size_new = int(max_height/float(img_ratio)),max_height
-
-    return img.resize(size_new)
+    return img.resize((new_width,new_height))
 
 
 def is_valid_attachment(full_attachment_path):
