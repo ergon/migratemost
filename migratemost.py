@@ -91,6 +91,7 @@ option_hipchat_tokens = []
 option_hipchat_amend_rooms = False
 option_migrate_hipchat_custom_emoticons = False
 option_migrate_hipchat_builtin_emoticons = False
+option_shrink_image_to_limit = False
 
 
 class Version(int):
@@ -432,9 +433,30 @@ def is_invalid_image(full_attachment_path):
         return False  # not an image
 
     if image_size >= MM_MAX_IMAGE_IN_MEMORY_SIZE_BYTES:
-        return True  # image too large for uploading
+        if option_shrink_image_to_limit:
+            # max dimension is 6048*4032
+            image = get_shrinked_image(image)
+            image.save(full_attachment_path)
+            return False
+        else:
+            return True  # image too large for uploading
     else:
         return False  # valid image
+
+def get_shrinked_image(img):
+    max_width = 6048
+    max_height = 4032
+
+    width = img.size[0]
+    height = img.size[1]
+    if width >= height:
+        img_ratio = float(float(width) / height)
+        size_new = max_width,int(max_width/float(img_ratio))
+    else:
+        img_ratio = float(float(height) / width)
+        size_new = int(max_height/float(img_ratio)),max_height
+
+    return img.resize(size_new)
 
 
 def is_valid_attachment(full_attachment_path):
@@ -785,6 +807,7 @@ def parse_arguments():
     global option_hipchat_amend_rooms
     global option_migrate_hipchat_custom_emoticons
     global option_migrate_hipchat_builtin_emoticons
+    global option_shrink_image_to_limit
 
     parser = OptionParser(usage=
                           '''usage: %prog [options]
@@ -853,6 +876,11 @@ def parse_arguments():
                                       action="store_true",
                                       default=False,
                                       help="Use to to disable introductory tutorial of Mattermost upon first logon for all users")
+    parser_migration_group.add_option("--shrink_image_to_limit",
+                                      dest="shrink_image_to_limit",
+                                      action="store_true",
+                                      default=False,
+                                      help="Shrink images to their maximum size allowed by Mattermost")
 
     public_room_membership_intro = 'Use to have users join public channels if they were member of the corresponding room in Hipchat.'
     public_room_membership_disclaimer = 'DISCLAIMER: Getting reliable public room memberships out of Hipchat is not easy. See README.md for more details.'
@@ -1050,6 +1078,9 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
     else:
         default_auth_service = ''
         default_auth_data_field = ''
+
+    if options.shrink_image_to_limit:
+        option_shrink_image_to_limit = True
 
 
 def main():
