@@ -402,7 +402,7 @@ def write_space_separated_list(collection, filename):
 
 def timestamp_from_date(date):
     d = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ %f")
-    return int(d.strftime("%s")) * 1000 + d.microsecond / 1000
+    return int(time.mktime(d.timetuple())) * 1000 + d.microsecond / 1000
 
 
 def sanitize_message(message):
