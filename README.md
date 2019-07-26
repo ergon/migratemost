@@ -65,6 +65,9 @@ Options:
                         archived in Hipchat
     --disable-tutorial  Use to to disable introductory tutorial of Mattermost
                         upon first logon for all users
+    --shrink-image-to-limit
+                        Shrink images to their maximum size allowed by
+                        Mattermost
     --public-channel-membership-based-on-hipchat-export
                         Use to have users join public channels if they were
                         member of the corresponding room in Hipchat. Room
@@ -138,7 +141,7 @@ Options:
 
 ## Caveats
 - Long messages (over 16383 characters) are not supported by Mattermost and are split into several posts
-- Images larger than 36MB (in-memory representation) are [not accepted by the Mattermost bulk loader](https://mattermost.atlassian.net/browse/MM-13033) Migratemost skips such images.
+- Images with more than 24385536 pixels are [not accepted by the Mattermost bulk loader](https://github.com/mattermost/mattermost-server/blob/cee1e3685968cbf84b8b655bf438fb6d34a612e5/app/file.go#L696) By default such images are skipped. Using `--shrink-image-to-limit` images will be resized to match Mattermost's limits. 
 - Attachments which cannot be found at the given path are skipped
 - Hipchat private rooms are migrated to Mattermost private channels (not direct channels)
 - Private channel members are migrated by default, as otherwise the users do not have access anymore (Mattermost bulk loader does not distinguish between members and participants)
@@ -171,3 +174,4 @@ The project is available as open source under the terms of the [MIT License](./L
 ## Acknowledgements
 - Thanks to [Hipmost](https://github.com/orbitalimpact/hipmost) for a starting point
 - Thanks to [Swood](https://github.com/swood) for further inspiration on issues like image size restrictions
+- Thanks to [dra](https://github.com/dra) for implementing the image resizing
