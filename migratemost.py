@@ -7,7 +7,6 @@ import json
 import logging
 import os
 import re
-import sys
 import textwrap
 import time
 import math
@@ -448,13 +447,14 @@ def is_invalid_image(full_attachment_path):
     else:
         return False  # valid image
 
+
 def get_shrinked_image(img, pixels):
     scale_ratio = float(pixels) / MM_MAX_IMAGE_PIXELS
     root = math.sqrt(scale_ratio)
     new_width = int(img.width / root)
     new_height = int(img.height / root)
-
-    return img.resize((new_width,new_height))
+    
+    return img.resize((new_width, new_height))
 
 
 def is_valid_attachment(full_attachment_path):
@@ -535,7 +535,7 @@ def load_hipchat_room_history(room_id):
         # - "TopicRoomMessage"
         user_messages = [m for m in room_history if 'UserMessage' in m]
         flattened_messages = [m['UserMessage'] for m in user_messages]
-        return flattened_messages;
+        return flattened_messages
 
 
 def load_redis_autojoin():
@@ -874,7 +874,7 @@ def parse_arguments():
                                       action="store_true",
                                       default=False,
                                       help="Use to to disable introductory tutorial of Mattermost upon first logon for all users")
-    parser_migration_group.add_option("--shrink_image_to_limit",
+    parser_migration_group.add_option("--shrink-image-to-limit",
                                       dest="shrink_image_to_limit",
                                       action="store_true",
                                       default=False,
