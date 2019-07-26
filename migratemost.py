@@ -436,7 +436,12 @@ def is_invalid_image(full_attachment_path):
     if pixels >= MM_MAX_IMAGE_PIXELS:
         if option_shrink_image_to_limit:
             image = get_shrinked_image(image, pixels)
-            image.save(full_attachment_path)
+            logger.debug("Resized image %s to (%d,%d)" % (full_attachment_path, image.width, image.height))
+            try:
+                image.save(full_attachment_path)
+            except ValueError as e:
+                logger.warning("Failed to resize image %s: %s" % (full_attachment_path, str(e)))
+                return True  # failed to resize, so image is still too large for uploading
             return False
         else:
             return True  # image too large for uploading
