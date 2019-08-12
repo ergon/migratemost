@@ -560,7 +560,13 @@ def migrate_team():
 
 
 def store_base64_image(data, path, filename):
-    img = Image.open(BytesIO(base64.b64decode(data)))
+    try:
+        decoded = base64.b64decode(data)
+    except TypeError as e:
+        logger.error("Failed to decode base 64 data (%s): %s" % (str(e), data))
+        return ''
+
+    img = Image.open(BytesIO(decoded))
     img_path = '%s/%s.%s' % (path, filename, lower(img.format))
     with open(img_path, 'wb') as f:
         img.save(f)
