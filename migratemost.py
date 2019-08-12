@@ -731,7 +731,7 @@ def migrate_channel_posts(mm_username_by_hc_id, mm_channel):
             mm_post = Post(default_team_name, mm_channel.name, sender_mm_username, sender_hc_id, part, timestamp + i)
             mm_current_posts.append(mm_post)
 
-        if hc_message['attachment'] is not None:
+        if 'attachment' in hc_message and hc_message['attachment'] is not None:
             mm_attachment = migrate_attachment(hc_message['attachment'], 'rooms/%d' % mm_channel.get_hc_id())
             mm_current_posts[0].attachments = [mm_attachment]
 
