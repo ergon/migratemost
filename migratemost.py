@@ -10,10 +10,11 @@ import re
 import textwrap
 import time
 import math
+from functools import reduce
 from io import BytesIO
-from optparse import OptionParser, OptionGroup
 from PIL import Image
-from string import lower
+
+from optparse import OptionParser, OptionGroup
 from unidecode import unidecode
 
 import amend_hipchat_rooms
@@ -136,8 +137,8 @@ class User:
     teams = []  # list of UserTeamMembership
 
     def __init__(self, username, email, hipchat_id):
-        self.username = lower(username)
-        self.nickname = lower(username)
+        self.username = username.lower()
+        self.nickname = username.lower()
         self.email = email
         self._hipchat_id = int(hipchat_id)
         self.roles = 'system_user'
@@ -428,7 +429,7 @@ def sanitize_message(message):
 def is_invalid_image(full_attachment_path):
     try:
         image = Image.open(full_attachment_path)
-        pixels = image.width*image.height
+        pixels = image.width * image.height
     except:
         return False  # not an image
 
@@ -453,7 +454,7 @@ def get_shrinked_image(img, pixels):
     root = math.sqrt(scale_ratio)
     new_width = int(img.width / root)
     new_height = int(img.height / root)
-    
+
     return img.resize((new_width, new_height))
 
 
@@ -481,7 +482,7 @@ def contains_unicode(s):
 
 def sanitize_name(name):
     name = unidecode(u'%s' % name) if contains_unicode(name) else name
-    name = lower(name)
+    name = name.lower()
     name = re.sub('\s', '-', name)  # whitespaces are not allowed
     # by default, all non alphanumeric charaters will be replaced with underscore
     # if this is a too broad replacement for you or causes clashes of channel names,
@@ -510,7 +511,7 @@ def load_hipchat_users():
 def load_hipchat_user_history(user_id):
     user_history_path = '%s/users/%d/history.json' % (migration_input_path, user_id)
     if not os.path.exists(user_history_path):
-        return [] # ignore missing history files, required for users that were deleted in Hipchat
+        return []  # ignore missing history files, required for users that were deleted in Hipchat
     with open(user_history_path, 'r') as hc_history_file:
         return json.load(hc_history_file)
 
@@ -1065,13 +1066,13 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
         option_public_membership_based_on_redis = True
 
     if options.authentication_service:
-        default_auth_service = lower(options.authentication_service)
+        default_auth_service = options.authentication_service.lower()
         if not default_auth_service in ALLOWED_AUTH_SERVICES:
             parser.error("Illegal authentication service")
 
         if default_auth_service == 'ldap':
             if options.authentication_data_field:
-                default_auth_data_field = lower(options.authentication_data_field)
+                default_auth_data_field = options.authentication_data_field.lower()
                 if not default_auth_data_field in ALLOWED_AUTH_DATA_FIELDS:
                     parser.error("Illegal authentication data field")
             else:

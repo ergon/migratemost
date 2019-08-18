@@ -3,9 +3,8 @@
 import json
 import logging
 import os
-from optparse import OptionParser
-
 import hipchat_api
+from optparse import OptionParser
 
 logger = logging.getLogger(__name__)
 logger_handler = logging.StreamHandler()
@@ -19,20 +18,25 @@ option_base_url = ''
 option_input_file = './rooms.json'
 option_output_path = './'
 
+
 def _fetch_members(base_url, tokens, room_id):
     members = hipchat_api.fetch_and_parse(base_url + 'room/%d/member?max-results=1000' % room_id, tokens)
     return list(map(lambda m: m[u'id'], members[u'items']))
+
 
 def _fetch_participants(base_url, tokens, room_id):
     participants = hipchat_api.fetch_and_parse(base_url + 'room/%d/participant?max-results=1000' % room_id, tokens)
     return list(map(lambda p: p[u'id'], participants[u'items']))
 
+
 def _load_hipchat_rooms(path):
     with open(path, 'r') as hc_rooms_file:
         return json.load(hc_rooms_file)
 
+
 def _parse_comma_separated_argument(option, opt_str, value, parser):
     setattr(parser.values, option.dest, value.split(','))
+
 
 def _parse_arguments():
     global option_tokens
@@ -45,26 +49,26 @@ def _parse_arguments():
         Fills member and participant fields of Hipchat room export, as Hipchat export does not fill these fields for public rooms.
     ''')
     parser.add_option('-b', '--base-url',
-            type='string',
-            action='store',
-            dest='option_base_url',
-            help='Base URL of the Hipchat API, e.g. https://hipchat.mycompany.ch/v2/')
+                      type='string',
+                      action='store',
+                      dest='option_base_url',
+                      help='Base URL of the Hipchat API, e.g. https://hipchat.mycompany.ch/v2/')
     parser.add_option('-i', '--input-file',
-            type='string',
-            action='store',
-            dest='option_input_file',
-            help='Path to rooms.json file')
+                      type='string',
+                      action='store',
+                      dest='option_input_file',
+                      help='Path to rooms.json file')
     parser.add_option('-o', '--output-path',
-            type='string',
-            action='store',
-            dest='option_output_path',
-            help='Path where output file will be placed.')
+                      type='string',
+                      action='store',
+                      dest='option_output_path',
+                      help='Path where output file will be placed.')
     parser.add_option('-t', '--option_tokens',
-            type='string',
-            dest='token_list',
-            action='callback',
-            callback=_parse_comma_separated_argument,
-            help='''Comma separated list of access option_tokens with "View Room" scope.
+                      type='string',
+                      dest='token_list',
+                      action='callback',
+                      callback=_parse_comma_separated_argument,
+                      help='''Comma separated list of access option_tokens with "View Room" scope.
 Providing many option_tokens speeds up the the API calls, as Hipchat has a hardcoded 100 requests per token per 5 minutes rate limit.''')
 
     (options, args) = parser.parse_args()
@@ -89,6 +93,7 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
 
     if options.option_output_path:
         option_output_path = options.option_output_path
+
 
 def amend_rooms(input_file, output_path, output_filename, hipchat_base_url, hipchat_tokens):
     if not os.path.exists(input_file):
@@ -119,9 +124,11 @@ def amend_rooms(input_file, output_path, output_filename, hipchat_base_url, hipc
         output_file.write(json.dumps(rooms, indent=2))
     logger.info('Finished amending Hipchat room export. Output written to %s' % (output_file_path))
 
+
 def main():
     _parse_arguments()
     amend_rooms(option_input_file, option_output_path, 'rooms_extended.json', option_base_url, option_tokens)
+
 
 if __name__ == "__main__":
     main()
