@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import base64
 import datetime
@@ -377,7 +377,7 @@ def to_json(obj):
                       class_name: obj}  # MM's JSON structure requires the objects to be wrapped with the type
     json_indent = 4 if FORMATTED_JSON_OUTPUT else None
     return json.dumps(wrapped_object,
-                      default=lambda o: {k: v for k, v in o.__dict__.iteritems() if not k.startswith('_')},
+                      default=lambda o: {k: v for k, v in o.__dict__.items() if not k.startswith('_')},
                       # skip "private" fields
                       sort_keys=True, indent=json_indent)
 
@@ -492,7 +492,7 @@ def sanitize_name(name):
     name = CONSECUTIVE_DASHES_RE.sub('-', name)  # beautification, multiple dashes in a row are allowed
     name = TRAILING_DASHES_OR_UNDERSCORES_RE.sub('', name)  # trailing dashes or underscores are not allowed
     name = LEADING_DASHES_OR_UNDERSCORES_RE.sub('', name)  # leading dashes or underscores are not allowed
-    return str(name.decode('UTF-8'))
+    return str(name)
 
 
 def sanitize_channel_display_name_or_header(name):
@@ -568,7 +568,7 @@ def store_base64_image(data, path, filename):
         return ''
 
     img = Image.open(BytesIO(decoded))
-    img_path = '%s/%s.%s' % (path, filename, lower(img.format))
+    img_path = '%s/%s.%s' % (path, filename, img.format.lower())
     with open(img_path, 'wb') as f:
         img.save(f)
     return img_path

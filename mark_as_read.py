@@ -1,15 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
-import urllib2, base64, json, urllib,sys, urlparse
+from urllib.parse import urlparse
+import urllib3, base64, json, urllib, sys
 from optparse import OptionParser
 import getpass
 
 def _create_request(url, params='', is_post=False):
     if is_post:
-        request = urllib2.Request(url=url, data=params)
+        request = urllib3.Request(url=url, data=params)
     else:
-        request = urllib2.Request(url + params)
+        request = urllib3.Request(url + params)
 
     request.add_header("Authorization", "Bearer %s" % (access_token))
     request.add_header("Content-Type", "application/json")
@@ -22,13 +23,13 @@ def fetch_and_parse(request):
 
 def fetch(request):
     try:
-        response = urllib2.urlopen(request)
+        response = urllib3.urlopen(request)
         return response
-    except urllib2.HTTPError, e:
+    except urllib3.HTTPError as e:
         print(e.code)
         print(e.read())
         exit(1)
-    except urllib2.URLError, e:
+    except urllib3.URLError as e:
         print(e.args)
         print(e.read())
         exit(1)
