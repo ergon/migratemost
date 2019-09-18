@@ -164,6 +164,9 @@ Options:
 - Output can be concatenated into one huge JSONL file. Might be easier to import and is faster in my experience (no overhead to startup the Mattermost process for every file).
 - Migratemost has only been tested with Hipchat Data Center but should also work with Hipchat Cloud exports
 
+## Troubleshooting
+Open an issue or join the [Migratemost channel](https://pre-release.mattermost.com/core/channels/migratemost) on the Mattermost community server.
+
 ## Contributing
 Bug reports and pull requests are welcome.
 
