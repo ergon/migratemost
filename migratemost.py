@@ -550,10 +550,13 @@ def concat_files(input_file_paths, output_file_name):
         mm_bulk_load_version = Version(1)
         output_file.writelines(to_json(mm_bulk_load_version) + "\n")
         for input_file_path in input_file_paths:
-            with open(input_file_path, 'r') as input_file:
-                iter_lines = iter(input_file)
-                next(iter_lines)  # skip version line as it should only occur once per file
-                output_file.writelines(iter_lines)
+            if os.path.exists(input_file_path):
+                with open(input_file_path, 'r') as input_file:
+                    iter_lines = iter(input_file)
+                    next(iter_lines)  # skip version line as it should only occur once per file
+                    output_file.writelines(iter_lines)
+            else:
+                logger.warning('Could not find file for concatenation:  %s' % (input_file_path))
 
 
 def migrate_team():
