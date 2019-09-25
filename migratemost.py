@@ -1262,14 +1262,14 @@ def main():
     if os.path.exists(deleted_users_full_path):
         logger.info('''
             Some deleted Hipchat users have been migrated. To deactivate them in Mattermost run:
-            cat %s | xargs ./mattermost user deactivate
+            cat %s | xargs $mattermost_path/mattermost user deactivate
         ''' % (deleted_users_full_path))
 
     archived_channels_full_path = full_output_path(OUTPUT_ARCHIVED_CHANNELS_FILENAME, 'txt')
     if (os.path.exists(archived_channels_full_path)):
         logger.info('''
             Some archive Hipchat rooms have been migrated. To archive them in Mattermost run:
-            cat %s | xargs ./mattermost channel archive
+            cat %s | xargs $mattermost_path/mattermost channel archive
         ''' % (archived_channels_full_path))
 
     logger.info('''
