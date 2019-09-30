@@ -419,9 +419,7 @@ def sanitize_message(message, emoji_mapping):
 
     message_parts = ['']
     if message.startswith("/code"):
-        sliced = textwrap.wrap(message[6:],
-                               MM_MAX_MESSAGE_LENGTH - 8)  # shorten 8 to make room for formatting characters
-        message_parts = ["```\n%s\n```" % m for m in sliced]
+        message_parts = ["```\n%s\n```" % (message[6:],)]
     elif message.startswith("/quote"):
         message = replace_emojis()
 
