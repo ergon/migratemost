@@ -93,6 +93,8 @@ option_hipchat_amend_rooms = False
 option_migrate_hipchat_custom_emoticons = False
 option_migrate_hipchat_builtin_emoticons = False
 option_shrink_image_to_limit = False
+option_generate_email_addresses = False
+option_email_domain = ''
 
 
 class Version(int):
@@ -593,6 +595,9 @@ def migrate_users():
         os.makedirs(avatar_output_path)
 
     for hc_user in hc_users:
+        if option_generate_email_addresses:
+            if hc_user['email'] in (None, ''):
+                hc_user['email'] = '@'.join([hc_user['mention_name'].lower(), option_email_domain])
         if option_filter_hc_users and not re.match(option_filter_hc_users, hc_user['email']):
             continue
 
@@ -823,6 +828,8 @@ def parse_arguments():
     global option_migrate_hipchat_custom_emoticons
     global option_migrate_hipchat_builtin_emoticons
     global option_shrink_image_to_limit
+    global option_generate_email_addresses
+    global option_email_domain
 
     parser = OptionParser(usage=
                           '''usage: %prog [options]
@@ -896,6 +903,18 @@ def parse_arguments():
                                       action="store_true",
                                       default=False,
                                       help="Shrink images to their maximum size allowed by Mattermost")
+    parser_migration_group.add_option("--generate-email-addresses",
+                                      dest="generate_email_addresses",
+                                      action="store_true",
+                                      default=False,
+                                      help="Autogenerate fake e-mail addresses if they are null (e.g. on guest accounts)"),
+    parser_migration_group.add_option("--email-domain",
+                                      dest="email_domain",
+                                      action="store",
+                                      type="string",
+                                      default="",
+                                      help="E-mail domain name used when generating fake e-mail addresses. Addresses "
+                                           "will be in the format: mentionname@<email-domain>")
 
     public_room_membership_intro = 'Use to have users join public channels if they were member of the corresponding room in Hipchat.'
     public_room_membership_disclaimer = 'DISCLAIMER: Getting reliable public room memberships out of Hipchat is not easy. See README.md for more details.'
@@ -1096,6 +1115,14 @@ Providing many option_tokens speeds up the the API calls, as Hipchat has a hardc
 
     if options.shrink_image_to_limit:
         option_shrink_image_to_limit = True
+
+    if options.generate_email_addresses:
+        option_generate_email_addresses = True
+
+        if options.email_domain is None:
+            parser.error("Argument --email-domain is required when using --generate-email-addresses")
+        else:
+            option_email_domain = options.email_domain
 
 
 def main():
