@@ -68,6 +68,13 @@ Options:
     --shrink-image-to-limit
                         Shrink images to their maximum size allowed by
                         Mattermost
+    --generate-email-addresses
+                        Autogenerate fake e-mail addresses if they are null
+                        (e.g. on guest accounts)
+    --email-domain=EMAIL_DOMAIN
+                        E-mail domain name used when generating fake e-mail
+                        addresses. Addresses will be in the format:
+                        mentionname@<email-domain>
     --public-channel-membership-based-on-hipchat-export
                         Use to have users join public channels if they were
                         member of the corresponding room in Hipchat. Room
@@ -175,6 +182,7 @@ Bug reports and pull requests are welcome.
 The project is available as open source under the terms of the [MIT License](./LICENSE).
 
 ## Acknowledgements
+- Thanks to [anx-ag](https://github.com/anx-ag) for a improvements and feedback
 - Thanks to [Hipmost](https://github.com/orbitalimpact/hipmost) for a starting point
 - Thanks to [Swood](https://github.com/swood) for further inspiration on issues like image size restrictions
 - Thanks to [dra](https://github.com/dra) for implementing the image resizing
