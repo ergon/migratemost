@@ -406,21 +406,30 @@ def timestamp_from_date(date):
     d = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ %f")
     return int(time.mktime(d.timetuple())) * 1000 + d.microsecond / 1000
 
-
-def sanitize_message(message):
+def sanitize_message(message, emoji_mapping):
     # Translate Hipchat formatting to Mattermost and split too long messages
     # List of slash commands in Hipchat:
     # https://confluence.atlassian.com/hipchatdc3/keyboard-shortcuts-and-slash-commands-966656108.html
+
+    def replace_emojis():
+        fixed_message = message
+        for a, b in emoji_mapping.items():
+            fixed_message = fixed_message.replace(a, b)
+        return fixed_message
+
     message_parts = ['']
     if message.startswith("/code"):
         sliced = textwrap.wrap(message[6:],
                                MM_MAX_MESSAGE_LENGTH - 8)  # shorten 8 to make room for formatting characters
         message_parts = ["```\n%s\n```" % m for m in sliced]
     elif message.startswith("/quote"):
+        message = replace_emojis()
+
         sliced = textwrap.wrap(message[7:],
                                MM_MAX_MESSAGE_LENGTH - 3)  # shorten 3 to make room for formatting characters
         message_parts = ["> %s\n" % m for m in sliced]
     else:
+        message = replace_emojis()
         message_parts = textwrap.wrap(message, MM_MAX_MESSAGE_LENGTH)
 
     return message_parts if len(message_parts) > 0 else ['']
@@ -608,7 +617,7 @@ def migrate_users():
     return mm_users
 
 
-def migrate_direct_posts(mm_username_by_hc_id, mm_user):
+def migrate_direct_posts(mm_username_by_hc_id, mm_user, emoji_mapping):
     hc_user_id = mm_user.get_hc_id()
     hc_user_history = load_hipchat_user_history(hc_user_id)
 
@@ -634,7 +643,7 @@ def migrate_direct_posts(mm_username_by_hc_id, mm_user):
             logger.error('Could not find receiver with Hipchat ID %s of direct post' % receiver_hc_id)
             exit(1)
         timestamp = timestamp_from_date(hc_message['timestamp'])
-        message_parts = sanitize_message(hc_message['message'])
+        message_parts = sanitize_message(hc_message['message'], emoji_mapping)
 
         mm_current_posts = []
         for i, part in enumerate(message_parts):
@@ -719,7 +728,7 @@ def migrate_channels():
     return mm_channels
 
 
-def migrate_channel_posts(mm_username_by_hc_id, mm_channel):
+def migrate_channel_posts(mm_username_by_hc_id, mm_channel, emoji_mapping):
     hc_room_history = load_hipchat_room_history(mm_channel.get_hc_id())
 
     invalid_post_count = 0
@@ -728,7 +737,7 @@ def migrate_channel_posts(mm_username_by_hc_id, mm_channel):
         timestamp = timestamp_from_date(hc_message['timestamp'])
         sender_hc_id = hc_message['sender']['id']
         sender_mm_username = mm_username_by_hc_id[sender_hc_id]
-        message_parts = sanitize_message(hc_message['message'])
+        message_parts = sanitize_message(hc_message['message'], emoji_mapping)
 
         mm_current_posts = []
         for i, part in enumerate(message_parts):
@@ -1109,6 +1118,13 @@ def main():
                                         option_hipchat_base_url, option_hipchat_tokens)
         logger.info('Amending room export finished')
 
+    emoji_mapping = {}
+    if option_migrate_hipchat_custom_emoticons or option_migrate_hipchat_builtin_emoticons:
+        logger.info('Emoticon migration started')
+        emoji_mapping = migrate_hipchat_emoticons.migrate_emoticons(migration_output_path, option_hipchat_base_url,
+                                                    option_hipchat_tokens, option_migrate_hipchat_builtin_emoticons)
+        logger.info('Emoticon migration finished')
+
     logger.info('Team migration started')
     mm_team = migrate_team()
     write_mm_json([mm_team], OUTPUT_TEAM_FILENAME)
@@ -1126,7 +1142,7 @@ def main():
         direct_channel_user_pairs = []
         for i, mm_user in enumerate(mm_users):
             logger.info('\tMigrating posts of user (username: %s) %d/%d' % (mm_user.username, i, len(mm_users)))
-            mm_direct_posts_of_user = migrate_direct_posts(mm_username_by_hc_id, mm_user)
+            mm_direct_posts_of_user = migrate_direct_posts(mm_username_by_hc_id, mm_user, emoji_mapping)
             stats_total_direct_posts += len(mm_direct_posts_of_user)
             logger.debug('\t\t%d posts migrated' % len(mm_direct_posts_of_user))
             write_mm_json(mm_direct_posts_of_user, '%s_%d' % (OUTPUT_DIRECT_POSTS_FILENAME, mm_user.get_hc_id()))
@@ -1149,7 +1165,7 @@ def main():
             for i in range(len(mm_channels)):
                 channel = mm_channels[i]
                 logger.info('\tMigrating posts of channel (name: %s) %d/%d' % (channel.name, i, len(mm_channels)))
-                mm_posts = migrate_channel_posts(mm_username_by_hc_id, channel)
+                mm_posts = migrate_channel_posts(mm_username_by_hc_id, channel, emoji_mapping)
                 stats_total_channel_posts += len(mm_posts)
                 logger.debug('\t\t%d posts migrated' % len(mm_posts))
                 write_mm_json(mm_posts, '%s_%d' % (OUTPUT_CHANNEL_POSTS_FILENAME, channel.get_hc_id()))
@@ -1179,12 +1195,6 @@ def main():
 
     # Users need to be written after all other migrations, as other migrations have an impact (e.g. channels for the membership)
     write_mm_json(mm_users, OUTPUT_USERS_FILENAME)
-
-    if option_migrate_hipchat_custom_emoticons or option_migrate_hipchat_builtin_emoticons:
-        logger.info('Emoticon migration started')
-        migrate_hipchat_emoticons.migrate_emoticons(migration_output_path, option_hipchat_base_url,
-                                                    option_hipchat_tokens, option_migrate_hipchat_builtin_emoticons)
-        logger.info('Emoticon migration finished')
 
     if option_concat_import_files:
         logger.info('Concat all migration files into %s.jsonl' % OUTPUT_ALL_IN_ONE_FILENAME)

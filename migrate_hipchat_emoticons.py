@@ -21,6 +21,12 @@ option_base_url = ''
 option_output_path = '.'
 option_migrate_global_emoticons = False
 
+emoji_mapping = {
+    "(thumbsup)": ":+1:",
+    "(thumbsdown)": ":-1:",
+    "(oops)": ":sweat:",
+    "(embarrassed)": ":flushed:",
+}
 
 def _download_file(url, output_path):
     data = urllib3.urlopen(url)
@@ -94,6 +100,8 @@ Providing many tokens speeds up the the API calls, as Hipchat has a hardcoded 10
 
 
 def migrate_emoticons(output_path, hipchat_base_url, hipchat_tokens, migrate_global_emoticons=False):
+    global emoji_mapping
+
     if not os.path.exists(output_path):
         logger.error("Output path invalid: %s" % output_path)
         exit(1)
@@ -120,6 +128,10 @@ def migrate_emoticons(output_path, hipchat_base_url, hipchat_tokens, migrate_glo
         mm_emoji = {'type': 'emoji', 'emoji': {'name': name, 'image': download_path}}
         mm_emojis.append(mm_emoji)
 
+        hc_emoji_text = '(%s)' % e[u'shortcut']
+        mm_emoji_text = ':%s:' % name
+        emoji_mapping[hc_emoji_text] = mm_emoji_text
+
     mm_version = {"type": "version", "version": 1}
     with open('%s/mm_emojis.jsonl' % output_path, 'w') as output_file:
         output_file.write(json.dumps(mm_version) + '\n')
@@ -127,6 +139,7 @@ def migrate_emoticons(output_path, hipchat_base_url, hipchat_tokens, migrate_glo
         output_file.write(emoji_json)
 
     logger.info('Finished migrating emoticons')
+    return emoji_mapping
 
 
 def main():
